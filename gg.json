@@ -1,0 +1,157 @@
+{
+    "info": {
+        "_postman_id": "YOUR_POSTMAN_ID",
+        "name": "Chat App API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Create Room",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"name\": \"Test Room\",\n    \"isPrivate\": false,\n    \"userIds\": [\"user1Id\", \"user2Id\"]\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/rooms",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "rooms"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "List Rooms",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/rooms?page=1&limit=10&userId=user1Id",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "rooms"
+                    ],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "limit",
+                            "value": "10"
+                        },
+                        {
+                            "key": "userId",
+                            "value": "user1Id"
+                        }
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Send Message",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"text\": \"Hello, World!\",\n    \"userId\": \"user1Id\",\n    \"roomId\": \"roomId\"\n}"
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/api/messages",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "messages"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Messages for Room",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/api/messages/:roomId?page=1&limit=50",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "api",
+                        "messages",
+                        ":roomId"
+                    ],
+                    "query": [
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "limit",
+                            "value": "50"
+                        }
+                    ],
+                    "variable": [
+                        {
+                            "key": "roomId",
+                            "value": "roomId"
+                        }
+                    ]
+                }
+            },
+            "response": []
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    ""
+                ]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:1337",
+            "type": "string"
+        }
+    ]
+}

@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Rooms</title>
+    <script src="https://npmcdn.com/parse/dist/parse.min.js"></script>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f0f4f8;
+        color: #333;
+      }
+
+      h1,
+      h2,
+      h3 {
+        color: #2c3e50;
+        text-align: center;
+      }
+
+      #user-management {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+
+      #user-management input {
+        width: calc(50% - 10px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      #user-management button {
+        width: calc(50% - 5px);
+        padding: 10px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #user-management button:hover {
+        background-color: #2980b9;
+      }
+
+      #logout {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #current-user {
+        font-weight: bold;
+      }
+
+      #chat-area {
+        background-color: #ffffff;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      #room-list,
+      #private-rooms {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      #room-list button,
+      #private-rooms button {
+        background-color: #ecf0f1;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      #room-list button:hover,
+      #private-rooms button:hover {
+        background-color: #bdc3c7;
+      }
+
+      #chat-messages {
+        height: 400px;
+        overflow-y: scroll;
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+      }
+
+      .message {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: #e8f4fd;
+      }
+
+      .message .user {
+        font-weight: bold;
+        color: #2980b9;
+      }
+
+      .message .text {
+        color: #34495e;
+      }
+
+      #message-input,
+      #room-input,
+      #private-chat-user {
+        width: calc(100% - 22px);
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #2ecc71;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: #27ae60;
+      }
+
+      .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 10px;
+      }
+
+      .pagination button {
+        margin: 0 5px;
+        padding: 5px 10px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .pagination button:hover {
+        background-color: #2980b9;
+      }
+
+      .pagination button:disabled {
+        background-color: #bdc3c7;
+        cursor: not-allowed;
+      }
+
+      #private-chat-section {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e8f6f3;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Chat Rooms</h1>
+    <div id="user-management">
+      <div id="login-signup">
+        <input type="text" id="username" placeholder="Username" />
+        <input type="password" id="password" placeholder="Password" />
+        <button onclick="signup()">Sign Up</button>
+        <button onclick="login()">Log In</button>
+      </div>
+      <div id="logout" style="display: none">
+        <span id="current-user"></span>
+        <button onclick="logout()">Log Out</button>
+      </div>
+    </div>
+    <div id="chat-area" style="display: none">
+      <div id="public-rooms">
+        <h3>Public Rooms</h3>
+        <div id="room-list"></div>
+        <div id="room-pagination" class="pagination"></div>
+        <input type="text" id="room-input" placeholder="Enter room name" />
+        <button onclick="createRoom()">Create Public Room</button>
+      </div>
+
+      <div id="private-chat-section">
+        <h3>Private Chats</h3>
+        <input type="text" id="private-chat-user" placeholder="Enter username to chat with" />
+        <button onclick="createPrivateRoom()">Start Private Chat</button>
+        <div id="private-rooms"></div>
+      </div>
+
+      <h2 id="current-room">No room selected</h2>
+      <div id="chat-messages"></div>
+      <div id="message-pagination" class="pagination"></div>
+      <input type="text" id="message-input" placeholder="Type your message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+      // Initialize Parse
+      Parse.initialize('myAppId'); // Replace with your App ID
+      Parse.serverURL = 'http://192.168.0.122:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://192.168.0.122:1337'; // Replace with your Live Query server URL
+
+      const Message = Parse.Object.extend('Message');
+      const Room = Parse.Object.extend('Room');
+      const chatMessages = document.getElementById('chat-messages');
+      const messageInput = document.getElementById('message-input');
+      const roomList = document.getElementById('room-list');
+      const roomInput = document.getElementById('room-input');
+      const currentRoomTitle = document.getElementById('current-room');
+      const roomPagination = document.getElementById('room-pagination');
+      const messagePagination = document.getElementById('message-pagination');
+      const loginSignup = document.getElementById('login-signup');
+      const logoutDiv = document.getElementById('logout');
+      const currentUserSpan = document.getElementById('current-user');
+      const chatArea = document.getElementById('chat-area');
+
+      let currentRoom = null;
+      let currentUser = null;
+      let currentRoomPage = 1;
+      let currentMessagePage = 1;
+
+      async function signup() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+          const user = new Parse.User();
+          user.set('username', username);
+          user.set('password', password);
+          await user.signUp();
+          updateUserUI();
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+
+      async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+          const user = await Parse.User.logIn(username, password);
+          updateUserUI();
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+
+      async function logout() {
+        try {
+          await Parse.User.logOut();
+          updateUserUI();
+        } catch (error) {
+          alert('Error: ' + error.message);
+        }
+      }
+
+      function updateUserUI() {
+        currentUser = Parse.User.current();
+        if (currentUser) {
+          loginSignup.style.display = 'none';
+          logoutDiv.style.display = 'block';
+          chatArea.style.display = 'block';
+          currentUserSpan.textContent = `Logged in as: ${currentUser.get('username')}`;
+          loadRooms();
+          loadPrivateRooms();
+        } else {
+          loginSignup.style.display = 'block';
+          logoutDiv.style.display = 'none';
+          chatArea.style.display = 'none';
+          currentUserSpan.textContent = '';
+          currentRoom = null;
+          currentRoomTitle.textContent = 'No room selected';
+        }
+      }
+
+      function displayMessage(message) {
+        const div = document.createElement('div');
+        div.className = 'message';
+        div.innerHTML = `
+                <span class="user">${message.user}:</span>
+                <span class="text">${message.text}</span>
+            `;
+        chatMessages.appendChild(div);
+      }
+
+      async function loadMessages(roomId, page = 1) {
+        try {
+          const result = await Parse.Cloud.run('fetchChatMessages', { roomId, page });
+          chatMessages.innerHTML = '';
+          result.results.forEach(displayMessage);
+          updatePagination(messagePagination, result.page, result.totalPages, newPage =>
+            loadMessages(roomId, newPage)
+          );
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        } catch (error) {
+          console.error('Error loading messages: ', error);
+        }
+      }
+
+      function sendMessage() {
+        if (!currentRoom) {
+          alert('Please select a room first.');
+          return;
+        }
+        const text = messageInput.value.trim();
+        if (text) {
+          const message = new Message();
+          message.set('user', currentUser.get('username'));
+          message.set('text', text);
+          message.set('roomId', currentRoom.id);
+          message
+            .save()
+            .then(savedMessage => {
+              messageInput.value = '';
+              loadMessages(currentRoom.id, currentMessagePage);
+            })
+            .catch(error => {
+              console.error('Error sending message: ', error);
+            });
+        }
+      }
+
+      async function createRoom() {
+        const roomName = roomInput.value.trim();
+        if (roomName) {
+          try {
+            const room = await Parse.Cloud.run('createPublicRoom', {
+              name: roomName,
+              createdBy: currentUser.get('username'),
+            });
+            roomInput.value = '';
+            loadRooms(currentRoomPage);
+          } catch (error) {
+            console.error('Error creating room: ', error);
+          }
+        }
+      }
+
+      async function loadRooms(page = 1) {
+        try {
+          const result = await Parse.Cloud.run('listRooms', { page });
+          roomList.innerHTML = '';
+          result.results.forEach(room => {
+            const button = document.createElement('button');
+            button.textContent = room.name;
+            button.onclick = () => joinRoom(room);
+            roomList.appendChild(button);
+          });
+          updatePagination(roomPagination, result.page, result.totalPages, loadRooms);
+          currentRoomPage = page;
+        } catch (error) {
+          console.error('Error loading rooms: ', error);
+        }
+      }
+
+      function updatePagination(container, currentPage, totalPages, callback) {
+        container.innerHTML = '';
+        if (currentPage > 1) {
+          addPaginationButton(container, 'Previous', () => callback(currentPage - 1));
+        }
+        addPaginationButton(container, `${currentPage} / ${totalPages}`);
+        if (currentPage < totalPages) {
+          addPaginationButton(container, 'Next', () => callback(currentPage + 1));
+        }
+      }
+
+      function addPaginationButton(container, text, onClick) {
+        const button = document.createElement('button');
+        button.textContent = text;
+        if (onClick) {
+          button.onclick = onClick;
+        } else {
+          button.disabled = true;
+        }
+        container.appendChild(button);
+      }
+
+      function joinRoom(room) {
+        currentRoom = room;
+        currentRoomTitle.textContent = `Current Room: ${room.name}`;
+        currentMessagePage = 1;
+        loadMessages(room.id, currentMessagePage);
+        setupLiveQuery(room.id);
+      }
+
+      function setupLiveQuery(roomId) {
+        if (window.subscription) {
+          window.subscription.unsubscribe();
+        }
+
+        const query = new Parse.Query(Message);
+        query.equalTo('roomId', roomId);
+
+        query
+          .subscribe()
+          .then(sub => {
+            window.subscription = sub;
+            window.subscription.on('create', message => {
+              displayMessage({
+                user: message.get('user'),
+                text: message.get('text'),
+              });
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+          })
+          .catch(error => {
+            console.error('Error subscribing to LiveQuery:', error);
+          });
+      }
+
+      async function createPrivateRoom() {
+        const otherUsername = document.getElementById('private-chat-user').value.trim();
+        if (otherUsername && otherUsername !== currentUser.get('username')) {
+          try {
+            const roomName = `Private: ${currentUser.get('username')} & ${otherUsername}`;
+            const room = await Parse.Cloud.run('createPrivateRoom', {
+              otherUsername: otherUsername,
+              roomName: roomName,
+            });
+            document.getElementById('private-chat-user').value = '';
+            loadPrivateRooms();
+            alert('Private room created successfully!');
+          } catch (error) {
+            console.error('Error creating private room: ', error);
+            alert('Error creating private room: ' + error.message);
+          }
+        } else {
+          alert('Please enter a valid username.');
+        }
+      }
+
+      async function loadPrivateRooms() {
+        try {
+          const privateRooms = await Parse.Cloud.run('listPrivateRooms', {
+            userId: currentUser.id,
+          });
+          const privateRoomsDiv = document.getElementById('private-rooms');
+          privateRoomsDiv.innerHTML = '';
+          privateRooms.forEach(room => {
+            const button = document.createElement('button');
+            button.textContent = room.get('name');
+            button.onclick = () => joinRoom(room);
+            privateRoomsDiv.appendChild(button);
+          });
+        } catch (error) {
+          console.error('Error loading private rooms: ', error);
+        }
+      }
+
+      // Check if user is already logged in
+      updateUserUI();
+
+      // Allow sending message with Enter key
+      messageInput.addEventListener('keypress', function (event) {
+        if (event.key === 'Enter') {
+          sendMessage();
+        }
+      });
+
+      // Setup error logging for LiveQuery
+      Parse.LiveQuery.on('error', error => {
+        console.error('LiveQuery error:', error);
+      });
+    </script>
+  </body>
+</html>
