@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Cost Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        h1 {
+            text-align: center;
+        }
+        .cost-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px auto;
+            font-size: 14px;
+        }
+        .cost-table th, .cost-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: right;
+        }
+        .cost-table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+            text-align: left;
+        }
+        .cost-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .cost-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        .cost-table .total-row {
+            font-weight: bold;
+            background-color: #e6f3ff;
+        }
+        .cost-table .component-column {
+            text-align: left;
+            font-weight: bold;
+        }
+        .info {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: inline-block;
+            width: 200px;
+        }
+        .input-group input {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Cost Comparison</h1>
+    
+    <div class="info">
+        <h2>Model Pricing:</h2>
+        <ul>
+            <li>Kiri:
+                <ul>
+                    <li>Input: $1.00 / 1M tokens</li>
+                    <li>Output: $5.00 / 1M tokens</li>
+                    <li>Vision: $0.005 / request</li>
+                </ul>
+            </li>
+            <li>Claude:
+                <ul>
+                    <li>Input: $3.00 / 1M tokens</li>
+                    <li>Output: $15.00 / 1M tokens</li>
+                    <li>Vision: $0.006 / request</li>
+                </ul>
+            </li>
+            <li>GPT:
+                <ul>
+                    <li>Input: $5.00 / 1M tokens</li>
+                    <li>Output: $15.00 / 1M tokens</li>
+                    <li>Vision: $0.005 / request</li>
+                </ul>
+            </li>
+            <li>Embedding:
+                <ul>
+                    <li>OpenAI (text-embedding-3-large): $0.13 / 1M tokens</li>
+                    <li>Claude (voyage-2): $0.1 / 1M tokens</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="info">
+        <h2>Calculation Parameters:</h2>
+        <div class="input-group">
+            <label for="num-requests">Number of requests:</label>
+            <input type="number" id="num-requests" value="100000">
+        </div>
+        <div class="input-group">
+            <label for="avg-input-tokens">Average input tokens:</label>
+            <input type="number" id="avg-input-tokens" value="1000">
+        </div>
+        <div class="input-group">
+            <label for="avg-output-tokens">Average output tokens:</label>
+            <input type="number" id="avg-output-tokens" value="2000">
+        </div>
+    </div>
+
+    <table class="cost-table" id="cost-table">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Kiri + OpenAI Embedding</th>
+                <th>Kiri + Claude Embedding</th>
+                <th>Claude + OpenAI Embedding</th>
+                <th>Claude + Claude Embedding</th>
+                <th>GPT + OpenAI Embedding</th>
+                <th>GPT + Claude Embedding</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="component-column">LLM Input Cost</td>
+                <td id="kiri-input-1"></td>
+                <td id="kiri-input-2"></td>
+                <td id="claude-input-1"></td>
+                <td id="claude-input-2"></td>
+                <td id="gpt-input-1"></td>
+                <td id="gpt-input-2"></td>
+            </tr>
+            <tr>
+                <td class="component-column">LLM Output Cost</td>
+                <td id="kiri-output-1"></td>
+                <td id="kiri-output-2"></td>
+                <td id="claude-output-1"></td>
+                <td id="claude-output-2"></td>
+                <td id="gpt-output-1"></td>
+                <td id="gpt-output-2"></td>
+            </tr>
+            <tr>
+                <td class="component-column">Embedding Cost</td>
+                <td id="openai-embed-1"></td>
+                <td id="claude-embed-1"></td>
+                <td id="openai-embed-2"></td>
+                <td id="claude-embed-2"></td>
+                <td id="openai-embed-3"></td>
+                <td id="claude-embed-3"></td>
+            </tr>
+            <tr>
+                <td class="component-column">Vision Cost</td>
+                <td id="kiri-vision-1"></td>
+                <td id="kiri-vision-2"></td>
+                <td id="claude-vision-1"></td>
+                <td id="claude-vision-2"></td>
+                <td id="gpt-vision-1"></td>
+                <td id="gpt-vision-2"></td>
+            </tr>
+            <tr class="total-row">
+                <td class="component-column">Total Cost</td>
+                <td id="kiri-total-1"></td>
+                <td id="kiri-total-2"></td>
+                <td id="claude-total-1"></td>
+                <td id="claude-total-2"></td>
+                <td id="gpt-total-1"></td>
+                <td id="gpt-total-2"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        function calculateCosts() {
+            const numRequests = parseFloat(document.getElementById('num-requests').value);
+            const avgInputTokens = parseFloat(document.getElementById('avg-input-tokens').value);
+            const avgOutputTokens = parseFloat(document.getElementById('avg-output-tokens').value);
+
+            const kiriInputCost = (numRequests * avgInputTokens / 1000000) * 1.00;
+            const kiriOutputCost = (numRequests * avgOutputTokens / 1000000) * 5.00;
+            const claudeInputCost = (numRequests * avgInputTokens / 1000000) * 3.00;
+            const claudeOutputCost = (numRequests * avgOutputTokens / 1000000) * 15.00;
+            const gptInputCost = (numRequests * avgInputTokens / 1000000) * 5.00;
+            const gptOutputCost = (numRequests * avgOutputTokens / 1000000) * 15.00;
+
+            const openaiEmbedCost = (numRequests * avgInputTokens / 1000000) * 0.13;
+            const claudeEmbedCost = (numRequests * avgInputTokens / 1000000) * 0.10;
+
+            const kiriVisionCost = numRequests * 0.005;
+            const claudeVisionCost = numRequests * 0.006;
+            const gptVisionCost = numRequests * 0.005;
+
+            // Update table cells
+            document.getElementById('kiri-input-1').textContent = kiriInputCost.toFixed(2);
+            document.getElementById('kiri-input-2').textContent = kiriInputCost.toFixed(2);
+            document.getElementById('claude-input-1').textContent = claudeInputCost.toFixed(2);
+            document.getElementById('claude-input-2').textContent = claudeInputCost.toFixed(2);
+            document.getElementById('gpt-input-1').textContent = gptInputCost.toFixed(2);
+            document.getElementById('gpt-input-2').textContent = gptInputCost.toFixed(2);
+
+            document.getElementById('kiri-output-1').textContent = kiriOutputCost.toFixed(2);
+            document.getElementById('kiri-output-2').textContent = kiriOutputCost.toFixed(2);
+            document.getElementById('claude-output-1').textContent = claudeOutputCost.toFixed(2);
+            document.getElementById('claude-output-2').textContent = claudeOutputCost.toFixed(2);
+            document.getElementById('gpt-output-1').textContent = gptOutputCost.toFixed(2);
+            document.getElementById('gpt-output-2').textContent = gptOutputCost.toFixed(2);
+
+            document.getElementById('openai-embed-1').textContent = openaiEmbedCost.toFixed(2);
+            document.getElementById('claude-embed-1').textContent = claudeEmbedCost.toFixed(2);
+            document.getElementById('openai-embed-2').textContent = openaiEmbedCost.toFixed(2);
+            document.getElementById('claude-embed-2').textContent = claudeEmbedCost.toFixed(2);
+            document.getElementById('openai-embed-3').textContent = openaiEmbedCost.toFixed(2);
+            document.getElementById('claude-embed-3').textContent = claudeEmbedCost.toFixed(2);
+
+            document.getElementById('kiri-vision-1').textContent = kiriVisionCost.toFixed(2);
+            document.getElementById('kiri-vision-2').textContent = kiriVisionCost.toFixed(2);
+            document.getElementById('claude-vision-1').textContent = claudeVisionCost.toFixed(2);
+            document.getElementById('claude-vision-2').textContent = claudeVisionCost.toFixed(2);
+            document.getElementById('gpt-vision-1').textContent = gptVisionCost.toFixed(2);
+            document.getElementById('gpt-vision-2').textContent = gptVisionCost.toFixed(2);
+
+            // Calculate and update totals
+            const kiriTotal1 = kiriInputCost + kiriOutputCost + openaiEmbedCost + kiriVisionCost;
+            const kiriTotal2 = kiriInputCost + kiriOutputCost + claudeEmbedCost + kiriVisionCost;
+            const claudeTotal1 = claudeInputCost + claudeOutputCost + openaiEmbedCost + claudeVisionCost;
+            const claudeTotal2 = claudeInputCost + claudeOutputCost + claudeEmbedCost + claudeVisionCost;
+            const gptTotal1 = gptInputCost + gptOutputCost + openaiEmbedCost + gptVisionCost;
+            const gptTotal2 = gptInputCost + gptOutputCost + claudeEmbedCost + gptVisionCost;
+
+            document.getElementById('kiri-total-1').textContent = kiriTotal1.toFixed(2);
+            document.getElementById('kiri-total-2').textContent = kiriTotal2.toFixed(2);
+            document.getElementById('claude-total-1').textContent = claudeTotal1.toFixed(2);
+            document.getElementById('claude-total-2').textContent = claudeTotal2.toFixed(2);
+            document.getElementById('gpt-total-1').textContent = gptTotal1.toFixed(2);
+            document.getElementById('gpt-total-2').textContent = gptTotal2.toFixed(2);
+        }
+
+        // Add event listeners to input fields
+        document.getElementById('num-requests').addEventListener('input', calculateCosts);
+        document.getElementById('avg-input-tokens').addEventListener('input', calculateCosts);
+        document.getElementById('avg-output-tokens').addEventListener('input', calculateCosts);
+
+        // Initial calculation
+        calculateCosts();
+    </script>
+</body>
+</html>
