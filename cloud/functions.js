@@ -25,31 +25,31 @@ Parse.Cloud.define("addUserToRoom", async (request) => {
   return room;
 });
 
-// List rooms with pagination
-Parse.Cloud.define("listRooms", async (request) => {
-  const { page = 1, limit = 10 } = request.params;
-  const skip = (page - 1) * limit;
+// // List rooms with pagination
+// Parse.Cloud.define("listRooms", async (request) => {
+//   const { page = 1, limit = 10 } = request.params;
+//   const skip = (page - 1) * limit;
 
-  const query = new Parse.Query("Room");
-  query.limit(limit);
-  query.skip(skip);
-  query.ascending("createdAt");
+//   const query = new Parse.Query("Room");
+//   query.limit(limit);
+//   query.skip(skip);
+//   query.ascending("createdAt");
 
-  const results = await query.find({ useMasterKey: true });
-  const total = await query.count({ useMasterKey: true });
+//   const results = await query.find({ useMasterKey: true });
+//   const total = await query.count({ useMasterKey: true });
 
-  return {
-    results: results.map(room => ({
-      id: room.id,
-      name: room.get("name"),
-      createdBy: room.get("createdBy"),
-      createdAt: room.createdAt
-    })),
-    page: page,
-    totalPages: Math.ceil(total / limit),
-    total: total
-  };
-});
+//   return {
+//     results: results.map(room => ({
+//       id: room.id,
+//       name: room.get("name"),
+//       createdBy: room.get("createdBy"),
+//       createdAt: room.createdAt
+//     })),
+//     page: page,
+//     totalPages: Math.ceil(total / limit),
+//     total: total
+//   };
+// });
 
 // Fetch chat messages with pagination
 Parse.Cloud.define("fetchChatMessages", async (request) => {
