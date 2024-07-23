@@ -73,11 +73,11 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
       const user = message.get("user");
       return {
         id: message.id,
-        userId: message.get("userId") || user?.id,
-        username: message.get("username") || user?.get("username"),
+        userId: message.get("userId") || (user && user.id),
+        username: message.get("username") || (user && user.get && user.get("username")),
         text: message.get("text"),
         createdAt: message.createdAt,
-        profileImageUrl: user?.get("profileImageUrl") || defaultImageUrl
+        profileImageUrl: (user && user.get && user.get("profileImageUrl")) || defaultImageUrl
       };
     }),
     page: page,

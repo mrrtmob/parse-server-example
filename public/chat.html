@@ -11,19 +11,19 @@
         align-items: center;
         margin-bottom: 10px;
       }
-    
+
       .profile-image {
         width: 30px;
         height: 30px;
         border-radius: 50%;
         margin-right: 10px;
       }
-    
+
       .message .user {
         font-weight: bold;
         margin-right: 10px;
       }
-    
+
       .message .text {
         flex-grow: 1;
       }
@@ -342,9 +342,9 @@
           chatMessages.innerHTML = '';
           result.results.forEach(message => {
             displayMessage({
-              user: message.username,
-              userId: message.userId,
-              text: message.text,
+              user: message.username || 'Unknown User',
+              userId: message.userId || '',
+              text: message.text || '',
               profileImageUrl: message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png',
             });
           });
@@ -354,6 +354,7 @@
           chatMessages.scrollTop = chatMessages.scrollHeight;
         } catch (error) {
           console.error('Error loading messages: ', error);
+          chatMessages.innerHTML = '<p>Error loading messages. Please try again later.</p>';
         }
       }
 
@@ -362,7 +363,6 @@
           alert('Please select a room first.');
           return;
         }
-        
       }
 
       async function createRoom() {
