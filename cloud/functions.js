@@ -200,7 +200,8 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("roomId", roomId);
   message.set("text", text);
   message.set("userId", user.id);
-  message.set("username", user.get("username"));
+  // message.set("username", user.get("username"));
+  message.set("username", user.username);
   // Instead of setting a pointer, we'll set the user's ID as a string
   message.set("user", user.id);
 
@@ -211,8 +212,9 @@ Parse.Cloud.define("createMessage", async (request) => {
     roomId: message.get("roomId"),
     text: message.get("text"),
     userId: user.id,
-    username: user.get("username"),
-    profileImageUrl: user.get("profileImageUrl") || "https://i.sstatic.net/l60Hf.png",
+    username: user.username,
+    // username: user.get("username"),
+    profileImageUrl: user.profileImageUrl || "https://i.sstatic.net/l60Hf.png",
     createdAt: message.createdAt
   };
 });
