@@ -69,6 +69,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
     results: results.map(message => ({
       id: message.id,
       user: message.get("user"),
+      userId: message.get("userId"),  // Include the userId here
       text: message.get("text"),
       createdAt: message.createdAt
     })),
@@ -161,5 +162,33 @@ Parse.Cloud.define("listRooms", async (request) => {
     page: page,
     totalPages: Math.ceil(total / limit),
     total: total
+  };
+});
+
+
+Parse.Cloud.define("createMessage", async (request) => {
+  if (!request.user) {
+    throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
+  }
+
+  const { roomId, text } = request.params;
+  const userId = request.user.id;
+
+  const Message = Parse.Object.extend("Message");
+  const message = new Message();
+
+  message.set("roomId", roomId);
+  message.set("text", text);
+  message.set("user", request.user);  // This sets a pointer to the User object
+  message.set("userId", userId);  // This sets the user's ID as a string
+
+  await message.save(null, { useMasterKey: true });
+
+  return {
+    id: message.id,
+    roomId: message.get("roomId"),
+    text: message.get("text"),
+    userId: message.get("userId"),
+    createdAt: message.createdAt
   };
 });

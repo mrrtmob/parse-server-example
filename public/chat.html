@@ -298,9 +298,9 @@
         const div = document.createElement('div');
         div.className = 'message';
         div.innerHTML = `
-                <span class="user">${message.user}:</span>
-                <span class="text">${message.text}</span>
-            `;
+          <span class="user" data-user-id="${message.userId}">${message.user}:</span>
+          <span class="text">${message.text}</span>
+        `;
         chatMessages.appendChild(div);
       }
 
@@ -308,7 +308,13 @@
         try {
           const result = await Parse.Cloud.run('fetchChatMessages', { roomId, page });
           chatMessages.innerHTML = '';
-          result.results.forEach(displayMessage);
+          result.results.forEach(message =>
+            displayMessage({
+              user: message.user.username,
+              userId: message.userId,
+              text: message.text,
+            })
+          );
           updatePagination(messagePagination, result.page, result.totalPages, newPage =>
             loadMessages(roomId, newPage)
           );
@@ -318,26 +324,23 @@
         }
       }
 
-      function sendMessage() {
+      async function sendMessage() {
         if (!currentRoom) {
           alert('Please select a room first.');
           return;
         }
         const text = messageInput.value.trim();
         if (text) {
-          const message = new Message();
-          message.set('user', currentUser.get('username'));
-          message.set('text', text);
-          message.set('roomId', currentRoom.id);
-          message
-            .save()
-            .then(savedMessage => {
-              messageInput.value = '';
-              loadMessages(currentRoom.id, currentMessagePage);
-            })
-            .catch(error => {
-              console.error('Error sending message: ', error);
+          try {
+            const message = await Parse.Cloud.run('createMessage', {
+              roomId: currentRoom.id,
+              text: text,
             });
+            messageInput.value = '';
+            loadMessages(currentRoom.id, currentMessagePage);
+          } catch (error) {
+            console.error('Error sending message: ', error);
+          }
         }
       }
 
@@ -418,7 +421,8 @@
             window.subscription = sub;
             window.subscription.on('create', message => {
               displayMessage({
-                user: message.get('user'),
+                user: message.get('user').get('username'),
+                userId: message.get('user').id,
                 text: message.get('text'),
               });
               chatMessages.scrollTop = chatMessages.scrollHeight;
