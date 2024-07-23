@@ -181,6 +181,7 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("text", text);
   message.set("user", request.user);  // This sets a pointer to the User object
   message.set("userId", userId);  // This sets the user's ID as a string
+  message.set("username", request.user.get("username"));  // Add this line
 
   await message.save(null, { useMasterKey: true });
 
@@ -189,6 +190,7 @@ Parse.Cloud.define("createMessage", async (request) => {
     roomId: message.get("roomId"),
     text: message.get("text"),
     userId: message.get("userId"),
+    username: message.get("username"),  // Add this line
     createdAt: message.createdAt
   };
 });

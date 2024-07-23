@@ -275,22 +275,32 @@
         }
       }
 
-      function updateUserUI() {
-        currentUser = Parse.User.current();
-        if (currentUser) {
-          loginSignup.style.display = 'none';
-          logoutDiv.style.display = 'block';
-          chatArea.style.display = 'block';
-          currentUserSpan.textContent = `Logged in as: ${currentUser.get('username')}`;
-          loadRooms();
-          loadPrivateRooms();
-        } else {
-          loginSignup.style.display = 'block';
-          logoutDiv.style.display = 'none';
-          chatArea.style.display = 'none';
-          currentUserSpan.textContent = '';
-          currentRoom = null;
-          currentRoomTitle.textContent = 'No room selected';
+      async function updateUserUI() {
+        try {
+          currentUser = await Parse.User.current();
+          if (currentUser) {
+            loginSignup.style.display = 'none';
+            logoutDiv.style.display = 'block';
+            chatArea.style.display = 'block';
+            currentUserSpan.textContent = `Logged in as: ${currentUser.get('username')}`;
+            await loadRooms();
+            await loadPrivateRooms();
+          } else {
+            loginSignup.style.display = 'block';
+            logoutDiv.style.display = 'none';
+            chatArea.style.display = 'none';
+            currentUserSpan.textContent = '';
+            currentRoom = null;
+            currentRoomTitle.textContent = 'No room selected';
+          }
+        } catch (error) {
+          console.error('Error updating UI:', error);
+          // If there's an invalid session, log out the user
+          if (error.code === Parse.Error.INVALID_SESSION_TOKEN) {
+            await Parse.User.logOut();
+            alert('Your session has expired. Please log in again.');
+            updateUserUI();
+          }
         }
       }
 
@@ -310,7 +320,7 @@
           chatMessages.innerHTML = '';
           result.results.forEach(message =>
             displayMessage({
-              user: message.user.username,
+              user: message.username || message.user.username,
               userId: message.userId,
               text: message.text,
             })
@@ -421,8 +431,8 @@
             window.subscription = sub;
             window.subscription.on('create', message => {
               displayMessage({
-                user: message.get('user').get('username'),
-                userId: message.get('user').id,
+                user: message.get('username') || message.get('user').get('username'),
+                userId: message.get('userId'),
                 text: message.get('text'),
               });
               chatMessages.scrollTop = chatMessages.scrollHeight;
