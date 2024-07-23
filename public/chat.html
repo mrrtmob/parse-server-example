@@ -363,6 +363,26 @@
           alert('Please select a room first.');
           return;
         }
+        const text = messageInput.value.trim();
+        if (text) {
+          try {
+            const message = await Parse.Cloud.run('createMessage', {
+              roomId: currentRoom.id,
+              text: text,
+            });
+            messageInput.value = '';
+            displayMessage({
+              user: message.username,
+              userId: message.userId,
+              text: message.text,
+              profileImageUrl: message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png',
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } catch (error) {
+            console.error('Error sending message: ', error);
+            alert('Failed to send message. Please try again.');
+          }
+        }
       }
 
       async function createRoom() {
@@ -445,6 +465,8 @@
                 user: message.get('username'),
                 userId: message.get('userId'),
                 text: message.get('text'),
+                profileImageUrl:
+                  message.get('user')?.get('profileImageUrl') || 'https://i.sstatic.net/l60Hf.png',
               });
               chatMessages.scrollTop = chatMessages.scrollHeight;
             });
