@@ -61,23 +61,30 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   query.limit(limit);
   query.skip(skip);
   query.descending("createdAt");
-  query.include("user");  // Include the user object if it's a pointer
 
   const results = await query.find({ useMasterKey: true });
   const total = await query.count({ useMasterKey: true });
 
   const defaultImageUrl = "https://i.sstatic.net/l60Hf.png";
 
+  // Fetch users for all messages at once
+  const userIds = [...new Set(results.map(message => message.get("user")))];
+  const userQuery = new Parse.Query(Parse.User);
+  userQuery.containedIn("objectId", userIds);
+  const users = await userQuery.find({ useMasterKey: true });
+  const userMap = Object.fromEntries(users.map(user => [user.id, user]));
+
   return {
     results: results.map(message => {
-      const user = message.get("user");
+      const userId = message.get("user");
+      const user = userMap[userId];
       return {
         id: message.id,
-        userId: message.get("userId") || (user && user.id),
-        username: message.get("username") || (user && user.get && user.get("username")),
+        userId: userId,
+        username: message.get("username") || (user && user.get("username")) || "Unknown User",
         text: message.get("text"),
         createdAt: message.createdAt,
-        profileImageUrl: (user && user.get && user.get("profileImageUrl")) || defaultImageUrl
+        profileImageUrl: (user && user.get("profileImageUrl")) || defaultImageUrl
       };
     }),
     page: page,
@@ -85,7 +92,6 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
     total: total
   };
 });
-
 
 Parse.Cloud.define("createPrivateRoom", async (request) => {
   if (!request.user) {
@@ -179,16 +185,17 @@ Parse.Cloud.define("createMessage", async (request) => {
   }
 
   const { roomId, text } = request.params;
-  const userId = request.user.id;
+  const user = request.user;
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
 
   message.set("roomId", roomId);
   message.set("text", text);
-  message.set("userId", userId);
-  message.set("username", request.user.get("username"));
-  message.set("user", request.user);
+  message.set("userId", user.id);
+  message.set("username", user.get("username"));
+  // Instead of setting a pointer, we'll set the user's ID as a string
+  message.set("user", user.id);
 
   await message.save(null, { useMasterKey: true });
 
@@ -196,9 +203,9 @@ Parse.Cloud.define("createMessage", async (request) => {
     id: message.id,
     roomId: message.get("roomId"),
     text: message.get("text"),
-    userId: message.get("userId"),
-    username: message.get("username"),
-    profileImageUrl: request.user.get("profileImageUrl") || "https://i.sstatic.net/l60Hf.png",
+    userId: user.id,
+    username: user.get("username"),
+    profileImageUrl: user.get("profileImageUrl") || "https://i.sstatic.net/l60Hf.png",
     createdAt: message.createdAt
   };
 });

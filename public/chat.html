@@ -465,8 +465,7 @@
                 user: message.get('username'),
                 userId: message.get('userId'),
                 text: message.get('text'),
-                profileImageUrl:
-                  message.get('user')?.get('profileImageUrl') || 'https://i.sstatic.net/l60Hf.png',
+                profileImageUrl: 'https://i.sstatic.net/l60Hf.png', // Default image for live messages
               });
               chatMessages.scrollTop = chatMessages.scrollHeight;
             });
