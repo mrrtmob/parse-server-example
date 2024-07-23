@@ -61,18 +61,25 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   query.limit(limit);
   query.skip(skip);
   query.descending("createdAt");
+  query.include("user");  // Include the user object if it's a pointer
 
   const results = await query.find({ useMasterKey: true });
   const total = await query.count({ useMasterKey: true });
 
+  const defaultImageUrl = "https://i.sstatic.net/l60Hf.png";
+
   return {
-    results: results.map(message => ({
-      id: message.id,
-      user: message.get("user"),
-      userId: message.get("userId"),  // Include the userId here
-      text: message.get("text"),
-      createdAt: message.createdAt
-    })),
+    results: results.map(message => {
+      const user = message.get("user");
+      return {
+        id: message.id,
+        userId: message.get("userId") || user?.id,
+        username: message.get("username") || user?.get("username"),
+        text: message.get("text"),
+        createdAt: message.createdAt,
+        profileImageUrl: user?.get("profileImageUrl") || defaultImageUrl
+      };
+    }),
     page: page,
     totalPages: Math.ceil(total / limit),
     total: total
@@ -181,6 +188,7 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("text", text);
   message.set("userId", userId);
   message.set("username", request.user.get("username"));
+  message.set("user", request.user);
 
   await message.save(null, { useMasterKey: true });
 
@@ -190,6 +198,7 @@ Parse.Cloud.define("createMessage", async (request) => {
     text: message.get("text"),
     userId: message.get("userId"),
     username: message.get("username"),
+    profileImageUrl: request.user.get("profileImageUrl") || "https://i.sstatic.net/l60Hf.png",
     createdAt: message.createdAt
   };
 });
