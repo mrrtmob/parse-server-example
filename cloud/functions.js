@@ -180,7 +180,8 @@ Parse.Cloud.define("listRooms", async (request) => {
 
 
 Parse.Cloud.define("createMessage", async (request) => {
-  const user = request.user || request.params.user; // Use either authenticated user or user from params
+  // Prioritize user from params over request.user
+  const user = request.params.user || request.user;
 
   if (!user) {
     throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
