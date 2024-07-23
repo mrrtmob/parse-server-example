@@ -180,15 +180,17 @@ Parse.Cloud.define("listRooms", async (request) => {
 
 
 Parse.Cloud.define("createMessage", async (request) => {
-  let user = request.user;
+  // let user = request.user;
 
-  // If there is no authenticated user, check for a user in params
-  if (!user) {
-    if (!request.params.user) {
-      throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
-    }
-    user = request.params.user; // Use the user from params
-  }
+  // // If there is no authenticated user, check for a user in params
+  // if (!user) {
+  //   if (!request.params.user) {
+  //     throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
+  //   }
+  //   user = request.params.user; // Use the user from params
+  // }
+
+  const user = request.params.user;
 
   const { roomId, text } = request.params;
 
