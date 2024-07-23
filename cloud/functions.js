@@ -180,17 +180,11 @@ Parse.Cloud.define("listRooms", async (request) => {
 
 
 Parse.Cloud.define("createMessage", async (request) => {
-  // let user = request.user;
+  const user = request.user || request.params.user; // Use either authenticated user or user from params
 
-  // // If there is no authenticated user, check for a user in params
-  // if (!user) {
-  //   if (!request.params.user) {
-  //     throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
-  //   }
-  //   user = request.params.user; // Use the user from params
-  // }
-
-  const user = request.params.user;
+  if (!user) {
+    throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
+  }
 
   const { roomId, text } = request.params;
 
@@ -200,10 +194,8 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("roomId", roomId);
   message.set("text", text);
   message.set("userId", user.id);
-  // message.set("username", user.get("username"));
-  message.set("username", user.username);
-  // Instead of setting a pointer, we'll set the user's ID as a string
-  message.set("user", user.id);
+  message.set("username", user.username); // Directly access username from user object
+  message.set("user", user.id); // Set user ID as a string
 
   await message.save(null, { useMasterKey: true });
 
@@ -212,8 +204,7 @@ Parse.Cloud.define("createMessage", async (request) => {
     roomId: message.get("roomId"),
     text: message.get("text"),
     userId: user.id,
-    username: user.username,
-    // username: user.get("username"),
+    username: user.username, // Directly access username from user object
     profileImageUrl: user.profileImageUrl || "https://i.sstatic.net/l60Hf.png",
     createdAt: message.createdAt
   };
