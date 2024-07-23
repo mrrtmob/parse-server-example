@@ -318,13 +318,24 @@
         try {
           const result = await Parse.Cloud.run('fetchChatMessages', { roomId, page });
           chatMessages.innerHTML = '';
-          result.results.forEach(message =>
+          result.results.forEach(message => {
+            let username = 'Unknown User';
+            let userId = '';
+
+            if (message.user && typeof message.user.get === 'function') {
+              username = message.user.get('username');
+              userId = message.user.id;
+            } else if (message.userId) {
+              userId = message.userId;
+              username = message.username || 'User ' + userId;
+            }
+
             displayMessage({
-              user: message.username || message.user.username,
-              userId: message.userId,
+              user: username,
+              userId: userId,
               text: message.text,
-            })
-          );
+            });
+          });
           updatePagination(messagePagination, result.page, result.totalPages, newPage =>
             loadMessages(roomId, newPage)
           );
@@ -347,7 +358,12 @@
               text: text,
             });
             messageInput.value = '';
-            loadMessages(currentRoom.id, currentMessagePage);
+            displayMessage({
+              user: message.username,
+              userId: message.userId,
+              text: message.text,
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
           } catch (error) {
             console.error('Error sending message: ', error);
           }
@@ -422,7 +438,7 @@
           window.subscription.unsubscribe();
         }
 
-        const query = new Parse.Query(Message);
+        const query = new Parse.Query('Message');
         query.equalTo('roomId', roomId);
 
         query
@@ -431,7 +447,7 @@
             window.subscription = sub;
             window.subscription.on('create', message => {
               displayMessage({
-                user: message.get('username') || message.get('user').get('username'),
+                user: message.get('username'),
                 userId: message.get('userId'),
                 text: message.get('text'),
               });
