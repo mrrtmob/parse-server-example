@@ -1,242 +1,240 @@
-# Parse Server Cloud Functions Documentation
 
-## Classes
+# Documentation for Mimi Chat Application
 
-* **Room** : Represents a chat room.
-* **Message** : Represents a message within a chat room.
+## Overview
+
+This documentation outlines the functionality of Mimi Chat Application, which enables users to communicate through public and private chat rooms. The application is built using Parse Server and provides cloud functions to manage various features like room creation, message sending, and user management.
+
+## User Interface Overview
+
+The application comprises two main sections:
+
+1. **User Management**: This section allows users to log in or log out using their phone number and password.
+2. **Chat Rooms**: Users can join public rooms or initiate private chats. The chat interface displays messages in real-time.
+
+### Key UI Components
+
+- **Login/Signup Form**: Input fields for phone number and password with a button to log in.
+- **Rooms Section**: Displays public rooms and private chats. Users can create new rooms or initiate private chats with other participants.
+- **Chat Screen**: Shows messages from the selected room. Users can send text messages, images, and audio messages.
 
 ## Cloud Functions
 
-### 1. createPublicRoom
+Cloud functions are utilized to handle various functionalities required by the application, such as room management and message handling.
 
-Creates a new public room.
+### Public Room Functions
 
-**Parameters:**
+#### 1. Create a Public Room
 
-* `name`: String - The name of the room
-* `createdBy`: String - The identifier of the user creating the room
+**Function Name**: `createPublicRoom`
 
-**Returns:** The newly created Room object
+**Description**: Creates a new public chat room if a room with the same name does not already exist.
 
-**Errors:**
+**Parameters**:
 
-* Throws a DUPLICATE_VALUE error if a room with the same name already exists
+- `name` (String): The name of the room.
+- `createdBy` (String): The user ID of the creator.
 
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const newRoom = await Parse.Cloud.run('createPublicRoom', {
-  name: 'General Discussion',
-  createdBy: 'user123'
+Parse.Cloud.run("createPublicRoom", { 
+  name: "General Chat", 
+  createdBy: "USER_ID_HERE" 
+}).then((room) => {
+  console.log("Room created successfully:", room);
+}).catch((error) => {
+  console.error("Error creating room:", error);
 });
-console.log('New room created:', newRoom);
 ```
 
-### 2. listRooms
+#### 2. List Rooms
 
-Lists all public rooms with pagination.
+**Function Name**: `listRooms`
 
-**Parameters:**
+**Description**: Retrieves a list of public chat rooms.
 
-* `page`: Number (optional, default: 1) - The page number
-* `limit`: Number (optional, default: 10) - Number of rooms per page
+**Parameters**:
 
-**Returns:**
+- `page` (Number): The page number for pagination (optional).
+- `limit` (Number): The number of rooms to return (optional).
 
-* `results`: Array of room objects
-* `page`: Current page number
-* `totalPages`: Total number of pages
-* `total`: Total number of rooms
-
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const rooms = await Parse.Cloud.run('listRooms', {
-  page: 1,
-  limit: 20
+Parse.Cloud.run("listRooms", { page: 1, limit: 10 }).then((response) => {
+  console.log("Rooms loaded:", response.results);
+}).catch((error) => {
+  console.error("Error loading rooms:", error);
 });
-console.log('Rooms:', rooms.results);
-console.log('Total pages:', rooms.totalPages);
 ```
 
-### 3. fetchChatMessages
+#### 3. Fetch Chat Messages
 
-Fetches messages for a specific room with pagination.
+**Function Name**: `fetchChatMessages`
 
-**Parameters:**
+**Description**: Fetches messages from a specific public room.
 
-* `roomId`: String - The ID of the room
-* `page`: Number (optional, default: 1) - The page number
-* `limit`: Number (optional, default: 50) - Number of messages per page
+**Parameters**:
 
-**Returns:**
+- `roomId` (String): The ID of the room from which to fetch messages.
+- `page` (Number): The page number for pagination (optional).
+- `limit` (Number): The number of messages to return (optional).
 
-* `results`: Array of message objects with user details
-* `page`: Current page number
-* `totalPages`: Total number of pages
-* `total`: Total number of messages
-
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const messages = await Parse.Cloud.run('fetchChatMessages', {
-  roomId: 'room123',
-  page: 1,
-  limit: 50
+Parse.Cloud.run("fetchChatMessages", { 
+  roomId: "ROOM_ID_HERE", 
+  page: 1, 
+  limit: 50 
+}).then((response) => {
+  console.log("Messages loaded:", response.results);
+}).catch((error) => {
+  console.error("Error loading messages:", error);
 });
-console.log('Messages:', messages.results);
 ```
 
-### 4. createMessage
+#### 4. Create a Message
 
-Creates a new message in a room.
+**Function Name**: `createMessage`
 
-**Parameters:**
+**Description**: Sends a message to a specified public room.
 
-* `roomId`: String - The ID of the room
-* `text`: String - The message text
-* `imageUrl`: String (optional) - URL of an attached image
-* `userId`: String - The ID of the user sending the message
-* `username`: String - The username of the user sending the message
+**Parameters**:
 
-**Returns:** The newly created message object
+- `roomId` (String): The ID of the room to send the message to.
+- `text` (String): The message content (optional).
+- `imageUrl` (String): URL of an image to attach (optional).
+- `userId` (String): The user ID of the message sender.
+- `username` (String): The username of the message sender.
 
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const newMessage = await Parse.Cloud.run('createMessage', {
-  roomId: 'room123',
-  text: 'Hello, world!',
-  imageUrl: 'https://example.com/image.jpg',
-  userId: 'user123',
-  username: 'johndoe'
+Parse.Cloud.run("createMessage", { 
+  roomId: "ROOM_ID_HERE", 
+  text: "Hello, World!", 
+  imageUrl: null, 
+  userId: "USER_ID_HERE", 
+  username: "USERNAME_HERE" 
+}).then((message) => {
+  console.log("Message sent:", message);
+}).catch((error) => {
+  console.error("Error sending message:", error);
 });
-console.log('New message:', newMessage);
 ```
 
-### 5. createPrivateRoom
+#### 5. Delete a Room
 
-Creates a new private room between two users or returns an existing one.
+**Function Name**: `deleteRoom`
 
-**Parameters:**
+**Description**: Deletes a public room and all associated messages.
 
-* `otherUsername`: String - The username of the other user
-* `roomName`: String - The name of the private room
-* `currentUsername`: String - The username of the current user
+**Parameters**:
 
-**Returns:** The private room object
+- `roomId` (String): The ID of the room to delete.
 
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const privateRoom = await Parse.Cloud.run('createPrivateRoom', {
-  otherUsername: 'janedoe',
-  roomName: 'Private Chat: John & Jane',
-  currentUsername: 'johndoe'
+Parse.Cloud.run("deleteRoom", { 
+  roomId: "ROOM_ID_HERE" 
+}).then((response) => {
+  console.log("Room deleted successfully:", response.message);
+}).catch((error) => {
+  console.error("Error deleting room:", error);
 });
-console.log('Private room:', privateRoom);
 ```
 
-### 6. listPrivateRooms
+## Private Room Functions
 
-Lists all private rooms for a specific user.
+### Overview
 
-**Parameters:**
+Private rooms allow users to engage in one-on-one chats securely. Each private room is uniquely identified by the involved users, ensuring that only these users can access the chat.
 
-* `username`: String - The username of the user
+### Functions for Private Rooms
 
-**Returns:** Array of private room objects
+#### 1. Create a Private Room
 
-**Example:**
+**Function Name**: `createPrivateRoom`
 
-javascript
+**Description**: Creates a new private chat room between two users if it doesn't already exist.
 
-Copy Code
+**Parameters**:
+
+- `otherUsername` (String): The username of the other participant.
+- `roomName` (String): The name of the room (e.g., "Private: User1 & User2").
+- `currentUsername` (String): The username of the user creating the room.
+
+**Example Usage**:
 
 ```javascript
-const privateRooms = await Parse.Cloud.run('listPrivateRooms', {
-  username: 'johndoe'
+Parse.Cloud.run("createPrivateRoom", { 
+  otherUsername: "OtherUser", 
+  roomName: "Private: User1 & OtherUser", 
+  currentUsername: "User1" 
+}).then((room) => {
+  console.log("Private room created:", room);
+}).catch((error) => {
+  console.error("Error creating private room:", error);
 });
-console.log('Private rooms:', privateRooms);
 ```
 
-### 7. addUserToRoom
+#### 2. List Private Rooms
 
-Adds a user to a room.
+**Function Name**: `listPrivateRooms`
 
-**Parameters:**
+**Description**: Retrieves the list of private rooms for a specific user.
 
-* `roomId`: String - The ID of the room
-* `userId`: String - The ID of the user to add
+**Parameters**:
 
-**Returns:** The updated Room object
+- `username` (String): The username of the user whose private rooms are to be retrieved.
 
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const updatedRoom = await Parse.Cloud.run('addUserToRoom', {
-  roomId: 'room123',
-  userId: 'user456'
+Parse.Cloud.run("listPrivateRooms", { 
+  username: "User1" 
+}).then((rooms) => {
+  console.log("Private rooms:", rooms);
+}).catch((error) => {
+  console.error("Error loading private rooms:", error);
 });
-console.log('Updated room:', updatedRoom);
 ```
 
-### 8. deleteRoom
+#### 3. Join a Private Room
 
-Deletes a room and all its associated messages.
+To join a private room selected by the user, you can utilize the `joinRoom` function as demonstrated.
 
-**Parameters:**
-
-* `roomId`: String - The ID of the room to delete
-
-**Returns:** A success message
-
-**Errors:**
-
-* Throws an INVALID_PARAMETER error if roomId is not provided
-* Throws an OBJECT_NOT_FOUND error if the room doesn't exist
-
-**Example:**
-
-javascript
-
-Copy Code
+**Example Usage**:
 
 ```javascript
-const result = await Parse.Cloud.run('deleteRoom', {
-  roomId: 'room123'
-});
-console.log('Delete result:', result);
+function joinPrivateRoom(room) {
+  // Assuming 'room' is an object representing the selected private room.
+  joinRoom(room);
+}
+
+// Example of joining a private room
+const selectedRoom = { id: "ROOM_ID_HERE", name: "Private: User1 & OtherUser", isPrivate: true };
+joinPrivateRoom(selectedRoom);
 ```
 
-## Usage Notes
+### Additional Notes
 
-1. All functions use the `useMasterKey: true` option, ensuring they have full access rights.
-2. The `createPrivateRoom` function creates a unique room identifier and sets up ACL for privacy.
-3. Error handling is implemented in most functions to provide clear feedback on issues.
-4. The `fetchChatMessages` function includes user details with each message, using a default image URL if a user's profile image is not available.
-5. Pagination is implemented in `listRooms` and `fetchChatMessages` for efficient data loading.Ï
+- **Unique Room Identification**: Private rooms are created with a unique identifier based on the users involved. The system prevents the creation of duplicate rooms for the same user pairs.
+- **User Permissions**: The access control list (ACL) settings ensure that only the two users can read and write in their private rooms.
+
+## Summary of Cloud Functions
+
+| Function Name         | Description                                        | Example Usage                                                                                                                               |
+| --------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createPublicRoom`  | Creates a new public chat room.                    | `Parse.Cloud.run("createPublicRoom", { name: "General Chat", createdBy: "USER_ID_HERE" });`                                               |
+| `listRooms`         | Retrieves public rooms for display.                | `Parse.Cloud.run("listRooms", { page: 1, limit: 10 });`                                                                                   |
+| `fetchChatMessages` | Fetches messages from a specified room.            | `Parse.Cloud.run("fetchChatMessages", { roomId: "ROOM_ID_HERE", page: 1, limit: 50 });`                                                   |
+| `createMessage`     | Sends a message to a specified room.               | `Parse.Cloud.run("createMessage", { roomId: "ROOM_ID_HERE", text: "Hello!", userId: "USER_ID_HERE", username: "USERNAME_HERE" });`        |
+| `deleteRoom`        | Deletes a room with all associated messages.       | `Parse.Cloud.run("deleteRoom", { roomId: "ROOM_ID_HERE" });`                                                                              |
+| `createPrivateRoom` | Creates a new private chat room between two users. | `Parse.Cloud.run("createPrivateRoom", { otherUsername: "OtherUser", roomName: "Private: User1 & OtherUser", currentUsername: "User1" });` |
+| `listPrivateRooms`  | Retrieves private rooms for a specific user.       | `Parse.Cloud.run("listPrivateRooms", { username: "User1" });`                                                                             |
+
+This documentation provides a comprehensive overview of the functionalities available in Mimi Chat Application, including user management, room management (both public and private), and messaging capabilities. The provided examples serve as a foundation for integrating and utilizing the cloud functions effectively within your application.
