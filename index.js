@@ -1,6 +1,3 @@
-// Example express application adding the parse-server module to expose Parse
-// compatible API routes.
-
 import express from 'express';
 import { ParseServer } from 'parse-server';
 import path from 'path';
@@ -16,11 +13,41 @@ export const config = {
   cloud: process.env.CLOUD_CODE_MAIN || path.join(__dirname, '/cloud/main.js'),
   appId: process.env.APP_ID || 'myAppId',
   masterKey: process.env.MASTER_KEY || 'masterKey', //Add your master key here. Keep it secret!
-  serverURL: process.env.SERVER_URL || 'https://parse-dev.evalley.io/parse', // Don't forget to change to https if needed
+  serverURL: process.env.SERVER_URL || 'http://localhost:1337/parse', // Don't forget to change to https if needed
   allowClientClassCreation: true,
   liveQuery: {
     classNames: ['Message', 'Room']
   },
+  auth: {
+    // Add this section for custom authentication
+    mimi: {
+      module: 'parse-server/lib/Adapters/Auth/CustomAuth.js',
+      options: {
+        // Implement token validation logic here
+        validateAuthData: async (authData) => {
+          // This is where you should validate the token from mimi-dev.evalley.io
+          // For example:
+          try {
+            const response = await fetch('https://mimi-dev.evalley.io/api/v1/auth/validate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authData.access_token}`
+              }
+            });
+            const data = await response.json();
+            return data.status === 200;
+          } catch (error) {
+            console.error('Token validation error:', error);
+            return false;
+          }
+        },
+        validateAppId: () => {
+          return Promise.resolve();
+        }
+      }
+    }
+  }
 };
 
 export const app = express();
@@ -43,11 +70,11 @@ Parse.serverURL = config.serverURL;
 // Serve static assets from the /public folder
 app.use('/public', express.static(path.join(__dirname, '/public')));
 
-// Serve the Parse API on the /parse URL prefix
-let server;
-if (!process.env.TESTING) {
-  server = new ParseServer(config);
-}
+// // Serve the Parse API on the /parse URL prefix
+// let server;
+// if (!process.env.TESTING) {
+//   server = new ParseServer(config);
+// }
 
 // Parse Server plays nicely with the rest of your web routes
 app.get('/', function (req, res) {
@@ -60,6 +87,7 @@ app.get('/chat', function (req, res) {
 
 const startServer = async () => {
   if (!process.env.TESTING) {
+    const server = new ParseServer(config);
     await server.start();
     const mountPath = process.env.PARSE_MOUNT || '/parse';
     app.use(mountPath, server.app);
@@ -75,7 +103,11 @@ const startServer = async () => {
     });
 
     // This will enable the Live Query real-time server
-    ParseServer.createLiveQueryServer(httpServer);
+    ParseServer.createLiveQueryServer(httpServer, {
+      appId: config.appId,
+      masterKey: config.masterKey,
+      serverURL: config.serverURL,
+    });
   }
 };
 

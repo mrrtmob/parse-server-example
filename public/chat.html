@@ -196,8 +196,9 @@
 
     <script>
       // Initialize Parse
-      Parse.initialize('myAppId'); // Replace with your App ID
+      Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
       Parse.serverURL = 'http://localhost:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://localhost:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -405,6 +406,9 @@
           document.getElementById('rooms-screen').style.display = 'none';
           document.getElementById('chat-screen').style.display = 'flex';
         }
+
+        // Re-setup LiveQuery for the new room
+        setupLiveQuery();
       }
 
       async function loadMessages(roomId) {
@@ -415,10 +419,15 @@
             limit: 50,
           });
           const chatMessages = document.getElementById('chat-messages');
-          chatMessages.innerHTML = '';
-          result.results.forEach(displayMessage);
+          chatMessages.innerHTML = ''; // Clear existing messages
+          const messageIds = new Set(); // To keep track of displayed message IDs
+          result.results.forEach(message => {
+            if (!messageIds.has(message.id)) {
+              displayMessage(message);
+              messageIds.add(message.id);
+            }
+          });
           chatMessages.scrollTop = chatMessages.scrollHeight;
-          
         } catch (error) {
           console.error('Error loading messages:', error);
         }
@@ -426,7 +435,12 @@
 
       function displayMessage(message) {
         const chatMessages = document.getElementById('chat-messages');
+        if (document.getElementById(`message-${message.id}`)) {
+          return; // Message already displayed, skip
+        }
+
         const messageDiv = document.createElement('div');
+        messageDiv.id = `message-${message.id}`; // Add an ID to the message div
         const isSent = message.username === currentUser.name;
 
         messageDiv.className = `flex ${isSent ? 'justify-end' : 'justify-start'} mb-2`;
@@ -480,7 +494,8 @@
             });
             document.getElementById('message-input').value = '';
             document.getElementById('image-url-input').value = '';
-            displayMessage(message);
+            // Remove this line to prevent duplicate display
+            // displayMessage(message);
             const chatMessages = document.getElementById('chat-messages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
           } catch (error) {
@@ -574,37 +589,45 @@
           return;
         }
 
-        const wsURL = 'ws://localhost:1337/parse'; // Replace with your WebSocket URL
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: wsURL,
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
-        });
-
-        client.on('open', () => {
-          console.log('LiveQuery connection established');
-        });
-
-        client.on('error', error => {
-          console.error('LiveQuery error:', error);
         });
 
         client.open();
 
         const query = new Parse.Query('Message');
-        const subscription = await client.subscribe(query, accessToken);
+        if (currentRoom) {
+          query.equalTo('roomId', currentRoom.id);
+        }
+
+        const subscription = await client.subscribe(query);
+
+        const messageIds = new Set(); // To keep track of received message IDs
 
         subscription.on('create', message => {
-          if (message.get('roomId') === currentRoom.id) {
+          const messageId = message.id;
+          if (message.get('roomId') === currentRoom.id && !messageIds.has(messageId)) {
+            messageIds.add(messageId);
             displayMessage({
+              id: messageId,
               username: message.get('username'),
               text: message.get('text'),
               imageUrl: message.get('imageUrl'),
               audioUrl: message.get('audioUrl'),
             });
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
           }
+        });
+
+        // Handle potential disconnections
+        client.on('close', () => {
+          console.log('LiveQuery connection closed. Attempting to reconnect...');
+          setTimeout(() => setupLiveQuery(), 3000); // Try to reconnect after 3 seconds
+        });
+
+        client.on('error', error => {
+          console.error('LiveQuery error:', error);
         });
       }
 
