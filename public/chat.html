@@ -310,34 +310,62 @@
         }
       }
 
-      async function createRoom() {
-        const roomName = document.getElementById('room-input').value.trim();
-        if (roomName) {
-          try {
-            const room = await makeAuthenticatedRequest('createPublicRoom', {
-              name: roomName,
-              createdBy: currentUser.name,
-            });
-            document.getElementById('room-input').value = '';
-            loadRooms();
-          } catch (error) {
-            console.error('Error creating room:', error);
-            alert('Failed to create room. Please try again.');
-          }
+      function createRoomButton(room) {
+        const button = document.createElement('button');
+        button.className = 'room-button';
+        button.onclick = joinRoom;
+        button.setAttribute('data-room-id', room.id);
+        button.setAttribute(
+          'data-room',
+          JSON.stringify({
+            id: room.id,
+            name: room.name,
+            isPrivate: room.isPrivate,
+            users: room.users,
+          })
+        );
+
+        const icon = document.createElement('div');
+        icon.className = 'room-icon';
+
+        let displayName = room.name;
+        if (room.isPrivate) {
+          const otherUser = room.users.find(username => username !== currentUser.name);
+          displayName = `Chat with ${otherUser}`;
+          icon.textContent = otherUser.charAt(0).toUpperCase();
+        } else {
+          icon.textContent = room.name.charAt(0).toUpperCase();
         }
+
+        const name = document.createElement('span');
+        name.textContent = displayName;
+
+        button.appendChild(icon);
+        button.appendChild(name);
+        return button;
       }
 
       function createRoomButton(room) {
         const button = document.createElement('button');
         button.className = 'room-button';
-        button.onclick = () => joinRoom(room);
+        button.onclick = joinRoom;
+        button.setAttribute('data-room-id', room.id);
+        button.setAttribute('data-room', JSON.stringify(room));
 
         const icon = document.createElement('div');
         icon.className = 'room-icon';
-        icon.textContent = room.name.charAt(0).toUpperCase();
+
+        let displayName = room.name;
+        if (room.isPrivate) {
+          const otherUser = room.users.find(username => username !== currentUser.name);
+          displayName = `Chat with ${otherUser}`;
+          icon.textContent = otherUser.charAt(0).toUpperCase();
+        } else {
+          icon.textContent = room.name.charAt(0).toUpperCase();
+        }
 
         const name = document.createElement('span');
-        name.textContent = room.name;
+        name.textContent = displayName;
 
         button.appendChild(icon);
         button.appendChild(name);
@@ -365,10 +393,20 @@
             const room = await makeAuthenticatedRequest('createPrivateRoom', {
               otherUsername: otherUsername,
               roomName: roomName,
-              currentUser: currentUser,
+              currentUsername: currentUser.name,
             });
             document.getElementById('private-chat-user').value = '';
-            loadPrivateRooms();
+            await loadPrivateRooms();
+
+            // Join the room
+            if (room && room.id) {
+              joinRoom({
+                id: room.id,
+                name: room.name,
+                isPrivate: true,
+                users: [currentUser.name, otherUsername],
+              });
+            }
           } catch (error) {
             console.error('Error creating private room:', error);
             alert('Error creating private room: ' + error.message);
@@ -381,26 +419,53 @@
       async function loadPrivateRooms() {
         try {
           const privateRooms = await makeAuthenticatedRequest('listPrivateRooms', {
-            userId: currentUser.id,
+            username: currentUser.name,
           });
           const privateRoomsDiv = document.getElementById('private-rooms');
           privateRoomsDiv.innerHTML = '';
           privateRooms.forEach(room => {
-            privateRoomsDiv.appendChild(createRoomButton(room));
+            const button = createRoomButton(room);
+            button.setAttribute('data-room-id', room.id);
+            privateRoomsDiv.appendChild(button);
           });
         } catch (error) {
           console.error('Error loading private rooms:', error);
         }
       }
 
-      function joinRoom(room) {
+      function joinRoom(eventOrRoom) {
+        let room;
+        if (eventOrRoom instanceof Event) {
+          // It's an event, get the room data from the button
+          const roomData = eventOrRoom.currentTarget.getAttribute('data-room');
+          try {
+            room = JSON.parse(roomData);
+          } catch (error) {
+            console.error('Error parsing room data:', error);
+            alert('Error joining room. Please try again.');
+            return;
+          }
+        } else {
+          // It's already a room object
+          room = eventOrRoom;
+        }
+
+        if (!room || !room.name) {
+          console.error('Invalid room data:', room);
+          alert('Error joining room. Invalid room data.');
+          return;
+        }
+
         currentRoom = room;
         document.getElementById('current-room').textContent = `Current Room: ${room.name}`;
         loadMessages(room.id);
 
         // Update active room styling
         document.querySelectorAll('.room-button').forEach(btn => btn.classList.remove('active'));
-        event.target.closest('.room-button').classList.add('active');
+        const activeButton = document.querySelector(`[data-room-id="${room.id}"]`);
+        if (activeButton) {
+          activeButton.classList.add('active');
+        }
 
         if (window.innerWidth <= 600) {
           document.getElementById('rooms-screen').style.display = 'none';

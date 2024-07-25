@@ -108,45 +108,47 @@ Parse.Cloud.define("createMessage", async (request) => {
 });
 
 Parse.Cloud.define("createPrivateRoom", async (request) => {
-  const { otherUsername, roomName, currentUser } = request.params;
-
-  const userQuery = new Parse.Query(Parse.User);
-  userQuery.equalTo("username", otherUsername);
-  const otherUser = await userQuery.first({ useMasterKey: true });
-
-  if (!otherUser) {
-    throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, 'Other user not found.');
-  }
+  const { otherUsername, roomName, currentUsername } = request.params;
 
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("users", [currentUser.id, otherUser.id]);
+  room.set("users", [currentUsername, otherUsername]);
 
+  // Create a unique room identifier
+  const roomIdentifier = [currentUsername, otherUsername].sort().join('_');
+  room.set("roomIdentifier", roomIdentifier);
+
+  // Set ACL
   const acl = new Parse.ACL();
-  acl.setReadAccess(currentUser.id, true);
-  acl.setWriteAccess(currentUser.id, true);
-  acl.setReadAccess(otherUser.id, true);
-  acl.setWriteAccess(otherUser.id, true);
+  acl.setPublicReadAccess(false);
+  acl.setPublicWriteAccess(false);
+  acl.setReadAccess(currentUsername, true);
+  acl.setWriteAccess(currentUsername, true);
+  acl.setReadAccess(otherUsername, true);
+  acl.setWriteAccess(otherUsername, true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
 
   return {
     id: room.id,
-    name: room.get("name")
+    name: room.get("name"),
+    users: room.get("users"),
+    roomIdentifier: room.get("roomIdentifier")
   };
 });
 
 Parse.Cloud.define("listPrivateRooms", async (request) => {
-  const { userId } = request.params;
+  const { username } = request.params;
   const query = new Parse.Query(Room);
   query.equalTo("isPrivate", true);
-  query.equalTo("users", userId);
+  query.equalTo("users", username);
   const rooms = await query.find({ useMasterKey: true });
   return rooms.map(room => ({
     id: room.id,
-    name: room.get("name")
+    name: room.get("name"),
+    users: room.get("users")
   }));
 });
 
