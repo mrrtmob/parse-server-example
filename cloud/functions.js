@@ -67,7 +67,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 
   const defaultImageUrl = "https://i.sstatic.net/l60Hf.png";
 
-  // Fetch users for all messages at once
+  // Fetch users for all messages
   const userIds = [...new Set(results.map(message => message.get("user")))];
   const userQuery = new Parse.Query(Parse.User);
   userQuery.containedIn("objectId", userIds);
@@ -82,9 +82,11 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
         id: message.id,
         userId: userId,
         username: message.get("username") || (user && user.get("username")) || "Unknown User",
-        text: message.get("text"),
+        text: message.get("text") || "",
         createdAt: message.createdAt,
-        profileImageUrl: (user && user.get("profileImageUrl")) || defaultImageUrl
+        profileImageUrl: (user && user.get("profileImageUrl")) || defaultImageUrl,
+        imageUrl: message.get("imageUrl") || null,
+        audioUrl: message.get("audioUrl") || null // Ensure to get the audio URL
       };
     }),
     page: page,
@@ -180,33 +182,36 @@ Parse.Cloud.define("listRooms", async (request) => {
 
 
 Parse.Cloud.define("createMessage", async (request) => {
-  // Prioritize user from params over request.user
-  const user = request.params.user || request.user;
+  const { roomId, text, imageUrl, audioUrl } = request.params;
 
+  // Ensure the user is authenticated
+  const user = request.user;
   if (!user) {
     throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
   }
 
-  const { roomId, text } = request.params;
-
   const Message = Parse.Object.extend("Message");
   const message = new Message();
 
+  // Set the properties of the message
   message.set("roomId", roomId);
-  message.set("text", text);
+  message.set("text", text || ""); // Store text or empty
   message.set("userId", user.id);
-  message.set("username", user.username); // Directly access username from user object
-  message.set("user", user.id); // Set user ID as a string
+  message.set("username", user.get("username")); // Get the username
+  message.set("imageUrl", imageUrl || null); // Include image URL, if provided
+  message.set("audioUrl", audioUrl || null); // Include audio URL, if provided
 
+  // Save the message
   await message.save(null, { useMasterKey: true });
 
   return {
     id: message.id,
     roomId: message.get("roomId"),
     text: message.get("text"),
-    userId: user.id,
-    username: user.username, // Directly access username from user object
-    profileImageUrl: user.profileImageUrl || "https://i.sstatic.net/l60Hf.png",
-    createdAt: message.createdAt
+    userId: message.get("userId"),
+    username: message.get("username"),
+    createdAt: message.createdAt,
+    imageUrl: message.get("imageUrl"),
+    audioUrl: message.get("audioUrl") // Return audio URL
   };
 });

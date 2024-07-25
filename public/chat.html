@@ -27,6 +27,7 @@
       .message .text {
         flex-grow: 1;
       }
+
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         max-width: 800px;
@@ -196,43 +197,58 @@
         background-color: #e8f6f3;
         border-radius: 8px;
       }
+
+      .image-message {
+        max-width: 200px;
+        display: block;
+        margin-top: 5px;
+      }
+      .audio-message {
+        margin-top: 5px;  /* Space between other elements and audio player */
+      }
     </style>
   </head>
   <body>
     <h1>Chat Rooms</h1>
-    <div id="user-management">
-      <div id="login-signup">
-        <input type="text" id="username" placeholder="Username" />
-        <input type="password" id="password" placeholder="Password" />
-        <button onclick="signup()">Sign Up</button>
-        <button onclick="login()">Log In</button>
-      </div>
-      <div id="logout" style="display: none">
-        <span id="current-user"></span>
-        <button onclick="logout()">Log Out</button>
-      </div>
+  <div id="user-management">
+    <div id="login-signup">
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="signup()">Sign Up</button>
+      <button onclick="login()">Log In</button>
     </div>
-    <div id="chat-area" style="display: none">
-      <div id="public-rooms">
-        <h3>Public Rooms</h3>
-        <div id="room-list"></div>
-        <div id="room-pagination" class="pagination"></div>
-        <input type="text" id="room-input" placeholder="Enter room name" />
-        <button onclick="createRoom()">Create Public Room</button>
-      </div>
-
-      <div id="private-chat-section">
-        <h3>Private Chats</h3>
-        <input type="text" id="private-chat-user" placeholder="Enter username to chat with" />
-        <button onclick="createPrivateRoom()">Start Private Chat</button>
-        <div id="private-rooms"></div>
-      </div>
-
-      <h2 id="current-room">No room selected</h2>
-      <div id="chat-messages"></div>
-      <div id="message-pagination" class="pagination"></div>
-      <input type="text" id="message-input" placeholder="Type your message..." />
-      <button onclick="sendMessage()">Send</button>
+    <div id="logout" style="display: none">
+      <span id="current-user"></span>
+      <button onclick="logout()">Log Out</button>
+    </div>
+  </div>
+  <div id="chat-area" style="display: none">
+    <div id="public-rooms">
+      <h3>Public Rooms</h3>
+      <div id="room-list"></div>
+      <div id="room-pagination" class="pagination"></div>
+      <input type="text" id="room-input" placeholder="Enter room name" />
+      <button onclick="createRoom()">Create Public Room</button>
+    </div>
+    <div id="private-chat-section">
+      <h3>Private Chats</h3>
+      <input type="text" id="private-chat-user" placeholder="Enter username to chat with" />
+      <button onclick="createPrivateRoom()">Start Private Chat</button>
+      <div id="private-rooms"></div>
+    </div>
+    <h2 id="current-room">No room selected</h2>
+    <div id="chat-messages"></div>
+    <div id="message-pagination" class="pagination"></div>
+    
+    <!-- Message input areas -->
+    <input type="text" id="message-input" placeholder="Type your message..." />
+    <input type="text" id="image-url-input" placeholder="Image URL (optional)" />
+    
+    <!-- Buttons for sending text and voice messages -->
+    <button onclick="sendMessage()">Send</button>
+    <button id="record-button" onclick="startRecording()">Start Recording</button>
+    <button id="stop-button" onclick="stopRecording()">Stop Recording</button>
+  </div>
     </div>
 
     <script>
@@ -245,6 +261,7 @@
       const Room = Parse.Object.extend('Room');
       const chatMessages = document.getElementById('chat-messages');
       const messageInput = document.getElementById('message-input');
+      const imageUrlInput = document.getElementById('image-url-input');
       const roomList = document.getElementById('room-list');
       const roomInput = document.getElementById('room-input');
       const currentRoomTitle = document.getElementById('current-room');
@@ -259,6 +276,79 @@
       let currentUser = null;
       let currentRoomPage = 1;
       let currentMessagePage = 1;
+
+      let mediaRecorder;
+      let audioChunks = [];
+
+      // Start recording audio
+      async function startRecording() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.start();
+
+        mediaRecorder.ondataavailable = function(event) {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async function() {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          audioChunks = []; // Clear the chunks for the next recording
+
+          const audioUrl = await uploadAudio(audioBlob); // Upload the audio
+          await sendVoiceMessage(audioUrl); // Send the audio message
+        };
+      }
+
+      // Stop recording
+      function stopRecording() {
+        mediaRecorder.stop();
+      }
+
+      // Upload audio to Parse server
+      async function uploadAudio(audioBlob) {
+        const parseFile = new Parse.File('voiceMessage.wav', audioBlob);
+        await parseFile.save();
+        return parseFile.url(); // Return the URL of the uploaded audio file
+      }
+
+      // Send the voice message
+      async function sendVoiceMessage(audioUrl) {
+        if (!currentRoom) {
+          alert('Please select a room first.');
+          return;
+        }
+
+        try {
+          const message = await Parse.Cloud.run('createMessage', {
+            roomId: currentRoom.id,
+            text: '',
+            imageUrl: '',
+            audioUrl: audioUrl // Pass the audio URL here
+          });
+
+          displayMessage({
+            user: message.username,
+            userId: message.userId,
+            text: '',
+            profileImageUrl: message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png',
+            audioUrl: audioUrl // Include audio URL
+          });
+        } catch (error) {
+          console.error('Error sending voice message: ', error);
+          alert('Failed to send voice message. Please try again.');
+        }
+      }
+
+      // Stop recording when the user clicks an appropriate button
+      document.getElementById('record-button').addEventListener('click', async () => {
+        await startRecording();
+      });
+
+      // You might want to have a separate stop button for stopping recordings
+      document.getElementById('stop-button').addEventListener('click', () => {
+        stopRecording();
+      });
 
       async function signup() {
         const username = document.getElementById('username').value;
@@ -328,30 +418,54 @@
       function displayMessage(message) {
         const div = document.createElement('div');
         div.className = 'message';
+      
         div.innerHTML = `
-          <img src="${message.profileImageUrl}" alt="${message.user}" class="profile-image">
-          <span class="user" data-user-id="${message.userId}">${message.user}:</span>
-          <span class="text">${message.text}</span>
+          <img src="${message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png'}" alt="${message.user}" class="profile-image">
+          <span class="user">${message.username || 'Unknown User'}:</span>
+          <span class="text">${message.text || ''}</span>
         `;
-        chatMessages.appendChild(div);
+      
+        // Check for audio URL and create an audio player
+        if (message.audioUrl) {
+          const audio = document.createElement('audio');
+          audio.src = message.audioUrl;
+          audio.controls = true; // Display controls to play audio
+          div.appendChild(audio);
+        }
+      
+        // Check for image URL and display the image
+        if (message.imageUrl) {
+          const img = document.createElement('img');
+          img.src = message.imageUrl;
+          img.className = 'image-message';
+          img.alt = "Chat Image";  // Set alt text for accessibility
+          div.appendChild(img);
+        }
+      
+        chatMessages.appendChild(div); // Append the message to the chat area
       }
 
       async function loadMessages(roomId, page = 1) {
         try {
           const result = await Parse.Cloud.run('fetchChatMessages', { roomId, page });
-          chatMessages.innerHTML = '';
+          chatMessages.innerHTML = ''; // Clear previous messages
+      
           result.results.forEach(message => {
             displayMessage({
               user: message.username || 'Unknown User',
               userId: message.userId || '',
-              text: message.text || '',
+              text: message.text || '',            // Text of the message
               profileImageUrl: message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png',
+              imageUrl: message.imageUrl || null,  // Include image URL if present
+              audioUrl: message.audioUrl || null    // Include audio URL if present
             });
           });
+      
           updatePagination(messagePagination, result.page, result.totalPages, newPage =>
-            loadMessages(roomId, newPage)
+            loadMessages(roomId, newPage) // Ensure pagination works as intended
           );
-          chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+          chatMessages.scrollTop = chatMessages.scrollHeight; // Autoscroll to the bottom
         } catch (error) {
           console.error('Error loading messages: ', error);
           chatMessages.innerHTML = '<p>Error loading messages. Please try again later.</p>';
@@ -364,24 +478,32 @@
           return;
         }
         const text = messageInput.value.trim();
-        if (text) {
+        const imageUrl = imageUrlInput.value.trim(); // Get image URL
+
+        if (text || imageUrl) {
+          // Send if either text or image URL is present
           try {
             const message = await Parse.Cloud.run('createMessage', {
               roomId: currentRoom.id,
               text: text,
+              imageUrl: imageUrl, // Include image URL
             });
             messageInput.value = '';
+            imageUrlInput.value = ''; // Clear image URL input
             displayMessage({
               user: message.username,
               userId: message.userId,
               text: message.text,
               profileImageUrl: message.profileImageUrl || 'https://i.sstatic.net/l60Hf.png',
+              imageUrl: message.imageUrl, // Include image URL in display
             });
             chatMessages.scrollTop = chatMessages.scrollHeight;
           } catch (error) {
             console.error('Error sending message: ', error);
             alert('Failed to send message. Please try again.');
           }
+        } else {
+          alert('Please enter a message or an image URL.');
         }
       }
 
@@ -466,6 +588,7 @@
                 userId: message.get('userId'),
                 text: message.get('text'),
                 profileImageUrl: 'https://i.sstatic.net/l60Hf.png', // Default image for live messages
+                imageUrl: message.get('imageUrl') || null, // Include image URL for live messages
               });
               chatMessages.scrollTop = chatMessages.scrollHeight;
             });
