@@ -9,7 +9,7 @@ from io import BytesIO
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize OpenAI client
-client = OpenAI(api_key="sk-proj-cGC5Z4DPI85DxSW1DF9ZT3BlbkFJUXG2srpX6qBJjGsZiUSu")
+client = OpenAI(api_key="")
 
 def create_mask(size, area):
     """Create a mask for editing."""
