@@ -11,94 +11,127 @@
       rel="stylesheet"
     />
     <style>
+      /* General styles */
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+
+      /* Room card styles */
       .room-card {
         @apply bg-white rounded-lg shadow-md p-4 mb-4 transition-all duration-200 ease-in-out;
         @apply hover:shadow-lg hover:scale-105 cursor-pointer;
       }
+
       .room-card.active {
         @apply ring-2 ring-blue-500;
       }
+
       .room-header {
         @apply flex items-center mb-2;
       }
+
       .room-icon {
         @apply w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-3;
       }
+
       .room-name {
         @apply text-lg font-medium text-gray-800;
       }
+
       .room-preview {
         @apply text-sm text-gray-500;
       }
+
       .room-footer {
         @apply flex justify-between items-center mt-2 text-xs text-gray-400;
       }
-      body {
-        font-family: 'Inter', sans-serif;
-      }
+
+      /* Message styles */
       .message {
         @apply p-3 rounded-lg max-w-[80%] shadow-sm mb-2;
       }
+
       .message.sent {
         @apply bg-blue-500 text-white self-end;
         border-bottom-right-radius: 0;
       }
+
       .message.received {
         @apply bg-white text-gray-800 self-start;
         border-bottom-left-radius: 0;
       }
+
       .message-username {
         @apply font-semibold text-xs mb-1 opacity-75;
       }
+
       .message-content {
         @apply text-sm;
       }
+
+      /* Room button styles */
       .room-button {
-        @apply w-full text-left p-4 mb-3 rounded-lg transition-all duration-200 ease-in-out flex items-center;
+        @apply w-full text-left p-4 mb-3 rounded-lg transition-all duration-200 ease-in-out;
+        @apply flex justify-between items-center;
         @apply hover:bg-gray-100 hover:shadow-md;
+        @apply focus:outline-none focus:ring-2 focus:ring-blue-300;
+        animation: fadeIn 0.3s ease-in-out;
       }
+
       .room-button.active {
         @apply bg-blue-100 text-blue-800 font-medium shadow-md;
       }
+
       .room-icon {
-        @apply w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-600 font-semibold mr-4 text-lg;
+        @apply flex-shrink-0 w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-600 font-semibold mr-4 text-lg;
       }
+
+      .room-details {
+        @apply flex-grow overflow-hidden;
+      }
+
+      .room-name {
+        @apply font-medium text-gray-800 truncate;
+      }
+
+      .room-preview {
+        @apply text-sm text-gray-500 truncate;
+      }
+
+      .unread-badge {
+        @apply bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full ml-2;
+      }
+
+      /* Delete button styles */
+      .room-button .bg-red-500 {
+        display: inline-block !important;
+        @apply ml-2 px-2 py-1 text-xs font-medium rounded transition-colors duration-200;
+      }
+
+      .room-button .bg-red-500:hover {
+        @apply bg-red-600;
+      }
+
+      /* Scrollbar styles */
       #chat-messages::-webkit-scrollbar {
         width: 6px;
       }
+
       #chat-messages::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 3px;
       }
+
       #chat-messages::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 3px;
       }
+
       #chat-messages::-webkit-scrollbar-thumb:hover {
         background: #555;
       }
-      .room-button {
-        @apply flex items-center w-full p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out;
-        @apply hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300;
-      }
-      .room-button.active {
-        @apply bg-blue-100 text-blue-800;
-      }
-      .room-icon {
-        @apply flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-3;
-      }
-      .room-details {
-        @apply flex-grow overflow-hidden;
-      }
-      .room-name {
-        @apply font-medium text-gray-800 truncate;
-      }
-      .room-preview {
-        @apply text-sm text-gray-500 truncate;
-      }
-      .unread-badge {
-        @apply bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full ml-2;
-      }
+
+      /* Animation keyframes */
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -118,6 +151,7 @@
         }
       }
 
+      /* Loading skeleton styles */
       .skeleton {
         @apply animate-pulse bg-gray-200 rounded;
       }
@@ -141,9 +175,8 @@
       .loading-line:last-child {
         @apply w-2/3;
       }
-
-      .room-button {
-        animation: fadeIn 0.3s ease-in-out;
+      .delete-button {
+        display: inline-block !important;
       }
     </style>
   </head>
@@ -264,7 +297,7 @@
           placeholder="Image URL (optional)"
           class="p-4 w-full rounded-full border-none bg-gray-100 mt-6 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
         />
-        <div class="flex space-x-4 mt-6">
+        <!-- <div class="flex space-x-4 mt-6">
           <button
             id="record-button"
             onclick="startRecording()"
@@ -280,7 +313,7 @@
           >
             Stop Recording
           </button>
-        </div>
+        </div> -->
       </div>
     </div>
 
@@ -400,68 +433,6 @@
         }
       }
 
-      function createRoomButton(room) {
-        const card = document.createElement('div');
-        card.className = 'room-card';
-        card.onclick = joinRoom;
-        card.setAttribute('data-room-id', room.id);
-        card.setAttribute(
-          'data-room',
-          JSON.stringify({
-            id: room.id,
-            name: room.name,
-            isPrivate: room.isPrivate,
-            users: room.users,
-          })
-        );
-
-        const header = document.createElement('div');
-        header.className = 'room-header';
-
-        const icon = document.createElement('div');
-        icon.className = 'room-icon';
-
-        let displayName = room.name;
-        let previewText = 'No messages yet';
-        let iconColor = 'bg-gray-400';
-
-        if (room.isPrivate) {
-          const otherUser = room.users.find(username => username !== currentUser.name);
-          displayName = otherUser;
-          previewText = 'Private chat';
-          iconColor = 'bg-purple-500';
-        } else {
-          iconColor = 'bg-blue-500';
-          previewText = 'Public room';
-        }
-
-        icon.className += ` ${iconColor}`;
-        icon.textContent = displayName.charAt(0).toUpperCase();
-
-        const name = document.createElement('div');
-        name.className = 'room-name';
-        name.textContent = displayName;
-
-        header.appendChild(icon);
-        header.appendChild(name);
-
-        const preview = document.createElement('div');
-        preview.className = 'room-preview';
-        preview.textContent = previewText;
-
-        const footer = document.createElement('div');
-        footer.className = 'room-footer';
-        footer.innerHTML = `
-          <span>${room.isPrivate ? 'Private' : 'Public'}</span>
-          <span>Created ${formatDate(room.createdAt)}</span>
-        `;
-
-        card.appendChild(header);
-        card.appendChild(preview);
-        card.appendChild(footer);
-
-        return card;
-      }
       function formatDate(dateString) {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', {
@@ -472,14 +443,20 @@
       }
 
       function createRoomButton(room) {
-        const button = document.createElement('button');
-        button.className = 'room-button';
-        button.onclick = joinRoom;
+        console.log('Creating room button for:', room); // Debug log
+
+        const button = document.createElement('div');
+        button.className =
+          'room-button flex justify-between items-center p-3 hover:bg-gray-100 rounded-lg cursor-pointer';
         button.setAttribute('data-room-id', room.id);
         button.setAttribute('data-room', JSON.stringify(room));
 
+        const leftContent = document.createElement('div');
+        leftContent.className = 'flex items-center flex-grow';
+        leftContent.onclick = () => joinRoom(room);
+
         const icon = document.createElement('div');
-        icon.className = 'room-icon';
+        icon.className = 'room-icon bg-blue-500 text-white';
 
         let displayName = room.name;
         if (room.isPrivate) {
@@ -492,9 +469,26 @@
 
         const name = document.createElement('span');
         name.textContent = displayName;
+        name.className = 'ml-3 font-medium';
 
-        button.appendChild(icon);
-        button.appendChild(name);
+        leftContent.appendChild(icon);
+        leftContent.appendChild(name);
+
+        button.appendChild(leftContent);
+
+        // Always add delete button for debugging
+        const deleteButton = document.createElement('button');
+        deleteButton.className =
+          'delete-button bg-red-500 text-white px-2 py-1 rounded-md text-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 ml-2';
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = e => {
+          e.stopPropagation(); // Prevent room join when clicking delete
+          deleteRoom(room.id);
+        };
+        button.appendChild(deleteButton);
+
+        console.log('Room button created:', button.outerHTML); // Debug log
+
         return button;
       }
 
@@ -504,9 +498,12 @@
 
         try {
           const result = await makeAuthenticatedRequest('listRooms', { page: 1, limit: 10 });
+          console.log('Rooms loaded:', result.results); // Debug log
           roomList.innerHTML = '';
           result.results.forEach(room => {
-            roomList.appendChild(createRoomButton(room));
+            const roomButton = createRoomButton(room);
+            roomList.appendChild(roomButton);
+            console.log('Room button added to DOM:', roomButton.outerHTML); // Debug log
           });
         } catch (error) {
           console.error('Error loading rooms:', error);
@@ -534,6 +531,47 @@
           `;
         }
         return html;
+      }
+
+      async function deleteRoom(roomId) {
+        if (confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
+          try {
+            console.log('Attempting to delete room:', roomId, 'by user:', currentUser.id);
+            const response = await makeAuthenticatedRequest('deleteRoom', {
+              roomId,
+              userId: currentUser.id,
+            });
+            console.log('Delete room response:', response);
+            alert('Room deleted successfully');
+            loadRooms(); // Refresh the room list
+            if (currentRoom && currentRoom.id === roomId) {
+              // If the deleted room was the current room, clear the chat screen
+              currentRoom = null;
+              document.getElementById('current-room').textContent = 'No room selected';
+              document.getElementById('chat-messages').innerHTML = '';
+            }
+          } catch (error) {
+            console.error('Error deleting room:', error);
+            if (error.response) {
+              try {
+                const errorData = await error.response.json();
+                console.error('Server error response:', errorData);
+                if (errorData.code === 119) {
+                  alert(
+                    'You do not have permission to delete this room. Only the room creator can delete it.'
+                  );
+                } else {
+                  alert('Failed to delete room: ' + errorData.error);
+                }
+              } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                alert('Failed to delete room. Please try again later.');
+              }
+            } else {
+              alert('Failed to delete room. ' + error.message);
+            }
+          }
+        }
       }
 
       async function createPrivateRoom() {

@@ -5,6 +5,17 @@ const Message = Parse.Object.extend("Message");
 // Cloud functions
 Parse.Cloud.define("createPublicRoom", async (request) => {
   const { name, createdBy } = request.params;
+
+  // Check if a room with the same name already exists
+  const query = new Parse.Query(Room);
+  query.equalTo("name", name);
+  query.equalTo("isPrivate", false);
+  const existingRoom = await query.first({ useMasterKey: true });
+
+  if (existingRoom) {
+    throw new Parse.Error(Parse.Error.DUPLICATE_VALUE, "A room with this name already exists");
+  }
+
   const room = new Room();
   room.set("name", name);
   room.set("createdBy", createdBy);
@@ -110,13 +121,28 @@ Parse.Cloud.define("createMessage", async (request) => {
 Parse.Cloud.define("createPrivateRoom", async (request) => {
   const { otherUsername, roomName, currentUsername } = request.params;
 
+  // Create a unique room identifier
+  const roomIdentifier = [currentUsername, otherUsername].sort().join('_');
+
+  // Check if a private room between these users already exists
+  const query = new Parse.Query(Room);
+  query.equalTo("roomIdentifier", roomIdentifier);
+  query.equalTo("isPrivate", true);
+  const existingRoom = await query.first({ useMasterKey: true });
+
+  if (existingRoom) {
+    return {
+      id: existingRoom.id,
+      name: existingRoom.get("name"),
+      users: existingRoom.get("users"),
+      roomIdentifier: existingRoom.get("roomIdentifier")
+    };
+  }
+
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
   room.set("users", [currentUsername, otherUsername]);
-
-  // Create a unique room identifier
-  const roomIdentifier = [currentUsername, otherUsername].sort().join('_');
   room.set("roomIdentifier", roomIdentifier);
 
   // Set ACL
@@ -179,6 +205,38 @@ Parse.Cloud.beforeSave("Room", (request) => {
   }
 });
 
+// Function to delete a room
+Parse.Cloud.define("deleteRoom", async (request) => {
+  const { roomId, userId } = request.params;
+
+  if (!roomId || !userId) {
+    throw new Parse.Error(Parse.Error.INVALID_PARAMETER, "Room ID and User ID are required");
+  }
+
+  const roomQuery = new Parse.Query("Room");
+  const room = await roomQuery.get(roomId, { useMasterKey: true });
+
+  if (!room) {
+    throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found");
+  }
+
+  // Check if the user has permission to delete the room
+  const createdBy = room.get("createdBy");
+  if (createdBy !== userId) {
+    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "You don't have permission to delete this room");
+  }
+
+  // Delete all messages in the room
+  const messageQuery = new Parse.Query("Message");
+  messageQuery.equalTo("roomId", roomId);
+  const messages = await messageQuery.find({ useMasterKey: true });
+  await Parse.Object.destroyAll(messages, { useMasterKey: true });
+
+  // Delete the room
+  await room.destroy({ useMasterKey: true });
+
+  return { message: "Room and associated messages deleted successfully" };
+});
 // // Global error handler
 // Parse.Cloud.onError((error) => {
 //   console.error("Cloud function error:", error);
