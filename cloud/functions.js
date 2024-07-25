@@ -198,7 +198,7 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("roomId", roomId);
   message.set("text", text || ""); // Store text or empty
   message.set("userId", user.id);
-  message.set("username", user.get("username")); // Get the username
+  message.set("username", user.username); // Get the username
   message.set("imageUrl", imageUrl || null); // Include image URL, if provided
   message.set("audioUrl", audioUrl || null); // Include audio URL, if provided
 
