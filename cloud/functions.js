@@ -207,10 +207,10 @@ Parse.Cloud.beforeSave("Room", (request) => {
 
 // Function to delete a room
 Parse.Cloud.define("deleteRoom", async (request) => {
-  const { roomId, userId } = request.params;
+  const { roomId } = request.params;
 
-  if (!roomId || !userId) {
-    throw new Parse.Error(Parse.Error.INVALID_PARAMETER, "Room ID and User ID are required");
+  if (!roomId) {
+    throw new Parse.Error(Parse.Error.INVALID_PARAMETER, "Room ID is required");
   }
 
   const roomQuery = new Parse.Query("Room");
@@ -218,12 +218,6 @@ Parse.Cloud.define("deleteRoom", async (request) => {
 
   if (!room) {
     throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found");
-  }
-
-  // Check if the user has permission to delete the room
-  const createdBy = room.get("createdBy");
-  if (createdBy !== userId) {
-    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "You don't have permission to delete this room");
   }
 
   // Delete all messages in the room
