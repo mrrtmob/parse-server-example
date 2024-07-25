@@ -11,6 +11,28 @@
       rel="stylesheet"
     />
     <style>
+      .room-card {
+        @apply bg-white rounded-lg shadow-md p-4 mb-4 transition-all duration-200 ease-in-out;
+        @apply hover:shadow-lg hover:scale-105 cursor-pointer;
+      }
+      .room-card.active {
+        @apply ring-2 ring-blue-500;
+      }
+      .room-header {
+        @apply flex items-center mb-2;
+      }
+      .room-icon {
+        @apply w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-3;
+      }
+      .room-name {
+        @apply text-lg font-medium text-gray-800;
+      }
+      .room-preview {
+        @apply text-sm text-gray-500;
+      }
+      .room-footer {
+        @apply flex justify-between items-center mt-2 text-xs text-gray-400;
+      }
       body {
         font-family: 'Inter', sans-serif;
       }
@@ -55,6 +77,74 @@
       #chat-messages::-webkit-scrollbar-thumb:hover {
         background: #555;
       }
+      .room-button {
+        @apply flex items-center w-full p-3 mb-2 rounded-lg transition-all duration-200 ease-in-out;
+        @apply hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300;
+      }
+      .room-button.active {
+        @apply bg-blue-100 text-blue-800;
+      }
+      .room-icon {
+        @apply flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-lg mr-3;
+      }
+      .room-details {
+        @apply flex-grow overflow-hidden;
+      }
+      .room-name {
+        @apply font-medium text-gray-800 truncate;
+      }
+      .room-preview {
+        @apply text-sm text-gray-500 truncate;
+      }
+      .unread-badge {
+        @apply bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full ml-2;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .skeleton {
+        @apply animate-pulse bg-gray-200 rounded;
+      }
+
+      .loading-room {
+        @apply flex items-center w-full p-3 mb-2;
+      }
+
+      .loading-icon {
+        @apply w-10 h-10 rounded-full mr-3 skeleton;
+      }
+
+      .loading-content {
+        @apply flex-grow;
+      }
+
+      .loading-line {
+        @apply h-4 skeleton mb-2;
+      }
+
+      .loading-line:last-child {
+        @apply w-2/3;
+      }
+
+      .room-button {
+        animation: fadeIn 0.3s ease-in-out;
+      }
     </style>
   </head>
   <body class="font-sans h-screen flex flex-col bg-gray-50">
@@ -94,43 +184,43 @@
       id="main-container"
       class="hidden flex-1 flex overflow-hidden bg-white rounded-xl shadow-lg m-6"
     >
-      <div id="rooms-screen" class="w-1/3 bg-gray-50 p-6 overflow-y-auto border-r">
+      <div id="rooms-screen" class="w-1/3 bg-gray-100 p-6 overflow-y-auto border-r">
         <h2 class="text-2xl font-bold mb-6 text-gray-800">Rooms</h2>
-        <div id="public-rooms">
+        <div id="public-rooms" class="mb-8">
           <h3 class="text-lg font-semibold mb-4 text-gray-700">Public Rooms</h3>
-          <div id="room-list" class="mb-6"></div>
-          <div class="flex space-x-2">
+          <div id="room-list" class="space-y-4"></div>
+          <div class="mt-4">
             <input
               type="text"
               id="room-input"
               placeholder="Enter room name"
-              class="p-3 w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onclick="createRoom()"
-              class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+              class="mt-2 w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
             >
-              Create
+              Create Room
             </button>
           </div>
         </div>
-        <div id="private-chat-section" class="mt-8">
+        <div id="private-chat-section">
           <h3 class="text-lg font-semibold mb-4 text-gray-700">Private Chats</h3>
-          <div class="flex space-x-2">
+          <div id="private-rooms" class="space-y-4 mb-4"></div>
+          <div>
             <input
               type="text"
               id="private-chat-user"
               placeholder="Enter username to chat with"
-              class="p-3 w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onclick="createPrivateRoom()"
-              class="bg-purple-500 text-white p-3 rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+              class="mt-2 w-full bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
             >
-              Chat
+              Start Private Chat
             </button>
           </div>
-          <div id="private-rooms" class="mt-6"></div>
         </div>
       </div>
       <div id="chat-screen" class="w-2/3 flex flex-col p-8 bg-white rounded-2xl shadow-lg">
@@ -311,11 +401,11 @@
       }
 
       function createRoomButton(room) {
-        const button = document.createElement('button');
-        button.className = 'room-button';
-        button.onclick = joinRoom;
-        button.setAttribute('data-room-id', room.id);
-        button.setAttribute(
+        const card = document.createElement('div');
+        card.className = 'room-card';
+        card.onclick = joinRoom;
+        card.setAttribute('data-room-id', room.id);
+        card.setAttribute(
           'data-room',
           JSON.stringify({
             id: room.id,
@@ -325,24 +415,60 @@
           })
         );
 
+        const header = document.createElement('div');
+        header.className = 'room-header';
+
         const icon = document.createElement('div');
         icon.className = 'room-icon';
 
         let displayName = room.name;
+        let previewText = 'No messages yet';
+        let iconColor = 'bg-gray-400';
+
         if (room.isPrivate) {
           const otherUser = room.users.find(username => username !== currentUser.name);
-          displayName = `Chat with ${otherUser}`;
-          icon.textContent = otherUser.charAt(0).toUpperCase();
+          displayName = otherUser;
+          previewText = 'Private chat';
+          iconColor = 'bg-purple-500';
         } else {
-          icon.textContent = room.name.charAt(0).toUpperCase();
+          iconColor = 'bg-blue-500';
+          previewText = 'Public room';
         }
 
-        const name = document.createElement('span');
+        icon.className += ` ${iconColor}`;
+        icon.textContent = displayName.charAt(0).toUpperCase();
+
+        const name = document.createElement('div');
+        name.className = 'room-name';
         name.textContent = displayName;
 
-        button.appendChild(icon);
-        button.appendChild(name);
-        return button;
+        header.appendChild(icon);
+        header.appendChild(name);
+
+        const preview = document.createElement('div');
+        preview.className = 'room-preview';
+        preview.textContent = previewText;
+
+        const footer = document.createElement('div');
+        footer.className = 'room-footer';
+        footer.innerHTML = `
+          <span>${room.isPrivate ? 'Private' : 'Public'}</span>
+          <span>Created ${formatDate(room.createdAt)}</span>
+        `;
+
+        card.appendChild(header);
+        card.appendChild(preview);
+        card.appendChild(footer);
+
+        return card;
+      }
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
       }
 
       function createRoomButton(room) {
@@ -373,16 +499,41 @@
       }
 
       async function loadRooms() {
+        const roomList = document.getElementById('room-list');
+        roomList.innerHTML = getLoadingRoomHTML(3); // Show 3 loading skeletons
+
         try {
           const result = await makeAuthenticatedRequest('listRooms', { page: 1, limit: 10 });
-          const roomList = document.getElementById('room-list');
           roomList.innerHTML = '';
           result.results.forEach(room => {
             roomList.appendChild(createRoomButton(room));
           });
         } catch (error) {
           console.error('Error loading rooms:', error);
+          roomList.innerHTML = '<p class="text-red-500">Error loading rooms</p>';
         }
+      }
+
+      function getLoadingRoomHTML(count) {
+        let html = '';
+        for (let i = 0; i < count; i++) {
+          html += `
+            <div class="room-card animate-pulse">
+              <div class="room-header">
+                <div class="room-icon bg-gray-300"></div>
+                <div class="w-3/4">
+                  <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+                </div>
+              </div>
+              <div class="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+              <div class="room-footer mt-4">
+                <div class="h-2 bg-gray-300 rounded w-1/4"></div>
+                <div class="h-2 bg-gray-300 rounded w-1/4"></div>
+              </div>
+            </div>
+          `;
+        }
+        return html;
       }
 
       async function createPrivateRoom() {
@@ -417,19 +568,21 @@
       }
 
       async function loadPrivateRooms() {
+        const privateRoomsDiv = document.getElementById('private-rooms');
+        privateRoomsDiv.innerHTML = getLoadingRoomHTML(3); // Show 3 loading skeletons
+
         try {
           const privateRooms = await makeAuthenticatedRequest('listPrivateRooms', {
             username: currentUser.name,
           });
-          const privateRoomsDiv = document.getElementById('private-rooms');
           privateRoomsDiv.innerHTML = '';
           privateRooms.forEach(room => {
             const button = createRoomButton(room);
-            button.setAttribute('data-room-id', room.id);
             privateRoomsDiv.appendChild(button);
           });
         } catch (error) {
           console.error('Error loading private rooms:', error);
+          privateRoomsDiv.innerHTML = '<p class="text-red-500">Error loading private rooms</p>';
         }
       }
 
