@@ -184,11 +184,12 @@ Parse.Cloud.define("listRooms", async (request) => {
 Parse.Cloud.define("createMessage", async (request) => {
   const { roomId, text, imageUrl, audioUrl } = request.params;
 
-  // Ensure the user is authenticated
-  const user = request.user;
+  const user = request.params.user || request.user;
+
   if (!user) {
     throw new Parse.Error(Parse.Error.SESSION_MISSING, 'User needs to be authenticated.');
   }
+
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
