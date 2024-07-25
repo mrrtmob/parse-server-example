@@ -37,7 +37,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Initialize Parse
-Parse.initialize(config.appId, "myClientId", config.masterKey);
+Parse.initialize(config.appId, "YOUR_JAVASCRIPT_KEY", config.masterKey);
 Parse.serverURL = config.serverURL;
 
 // Serve static assets from the /public folder
