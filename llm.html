@@ -4,86 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Cost Comparison</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f7f6;
-            transition: background-color 0.3s ease;
-        }
-        h1, h2 {
-            color: #2c3e50;
-            transition: color 0.3s ease;
-        }
-        h1 {
-            text-align: center;
-            font-size: 2.5em;
-            margin-bottom: 20px;
-        }
-        .cost-table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 20px auto;
-            font-size: 16px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: box-shadow 0.3s ease;
-        }
-        .cost-table th, .cost-table td {
-            border: 1px solid #ddd;
-            padding: 15px;
-            text-align: right;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        .cost-table th {
-            background-color: #3498db;
-            color: #fff;
-            font-weight: bold;
-            text-align: left;
-        }
-        .cost-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .cost-table tr:hover {
-            background-color: #e1f5fe;
-        }
-        .cost-table .total-row {
-            font-weight: bold;
-            background-color: #e6f3ff;
-        }
-        .cost-table .component-column {
-            text-align: left;
-            font-weight: bold;
-        }
-        .info {
-            background-color: #e3f2fd;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: box-shadow 0.3s ease;
-        }
-        .input-group {
-            margin-bottom: 10px;
-        }
-        .input-group label {
-            display: inline-block;
-            width: 200px;
-        }
-        .input-group input {
-            width: 100px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            transition: border-color 0.3s ease;
-        }
-        .input-group input:focus {
-            border-color: #3498db;
-        }
         .fade-in {
             opacity: 0;
             animation: fadeIn 1s forwards;
@@ -95,35 +17,35 @@
         }
     </style>
 </head>
-<body>
-    <h1 class="fade-in">LLM Cost Comparison</h1>
+<body class="bg-gray-900 text-gray-100">
+    <h1 class="fade-in text-center text-4xl font-bold mb-8">LLM Cost Comparison</h1>
     
-    <div class="info fade-in">
-        <h2>Model Pricing:</h2>
-        <ul>
+    <div class="info fade-in bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Model Pricing:</h2>
+        <ul class="list-disc list-inside">
             <li>Kiri:
-                <ul>
+                <ul class="list-disc list-inside ml-4">
                     <li>Input: $1.00 / 1M tokens</li>
                     <li>Output: $5.00 / 1M tokens</li>
                     <li>Vision: $0.005 / request</li>
                 </ul>
             </li>
             <li>Claude:
-                <ul>
+                <ul class="list-disc list-inside ml-4">
                     <li>Input: $3.00 / 1M tokens</li>
                     <li>Output: $15.00 / 1M tokens</li>
                     <li>Vision: $0.006 / request</li>
                 </ul>
             </li>
             <li>GPT:
-                <ul>
+                <ul class="list-disc list-inside ml-4">
                     <li>Input: $5.00 / 1M tokens</li>
                     <li>Output: $15.00 / 1M tokens</li>
                     <li>Vision: $0.005 / request</li>
                 </ul>
             </li>
             <li>Embedding:
-                <ul>
+                <ul class="list-disc list-inside ml-4">
                     <li>OpenAI (text-embedding-3-large): $0.13 / 1M tokens</li>
                     <li>Claude (voyage-2): $0.1 / 1M tokens</li>
                 </ul>
@@ -131,86 +53,85 @@
         </ul>
     </div>
 
-    <div class="info fade-in">
-        <h2>Calculation Parameters:</h2>
-        <div class="input-group">
-            <label for="num-requests">Number of requests:</label>
-            <input type="number" id="num-requests" value="100000">
+    <div class="info fade-in bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Calculation Parameters:</h2>
+        <div class="input-group mb-4">
+            <label for="num-requests" class="block mb-2">Number of requests:</label>
+            <input type="number" id="num-requests" value="100000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
         </div>
-        <div class="input-group">
-            <label for="avg-input-tokens">Average input tokens:</label>
-            <input type="number" id="avg-input-tokens" value="1000">
+        <div class="input-group mb-4">
+            <label for="avg-input-tokens" class="block mb-2">Average input tokens:</label>
+            <input type="number" id="avg-input-tokens" value="1000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
         </div>
-        <div class="input-group">
-            <label for="avg-output-tokens">Average output tokens:</label>
-            <input type="number" id="avg-output-tokens" value="2000">
+        <div class="input-group mb-4">
+            <label for="avg-output-tokens" class="block mb-2">Average output tokens:</label>
+            <input type="number" id="avg-output-tokens" value="2000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
         </div>
     </div>
 
-    <table class="cost-table fade-in" id="cost-table">
+    <table class="cost-table fade-in w-full text-right bg-gray-800 rounded-lg shadow-lg">
         <thead>
-            <tr>
-                <th>Component</th>
-                <th>Kiri + OpenAI Embedding</th>
-                <th>Kiri + Claude Embedding</th>
-                <th>Claude + OpenAI Embedding</th>
-                <th>Claude + Claude Embedding</th>
-                <th>GPT + OpenAI Embedding</th>
-                <th>GPT + Claude Embedding</th>
+            <tr class="bg-gray-700">
+                <th class="p-4">Component</th>
+                <th class="p-4">Kiri + OpenAI Embedding</th>
+                <th class="p-4">Kiri + Claude Embedding</th>
+                <th class="p-4">Claude + OpenAI Embedding</th>
+                <th class="p-4">Claude + Claude Embedding</th>
+                <th class="p-4">GPT + OpenAI Embedding</th>
+                <th class="p-4">GPT + Claude Embedding</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td class="component-column">LLM Input Cost</td>
-                <td id="kiri-input-1"></td>
-                <td id="kiri-input-2"></td>
-                <td id="claude-input-1"></td>
-                <td id="claude-input-2"></td>
-                <td id="gpt-input-1"></td>
-                <td id="gpt-input-2"></td>
+                <td class="component-column p-4">LLM Input Cost</td>
+                <td id="kiri-input-1" class="p-4"></td>
+                <td id="kiri-input-2" class="p-4"></td>
+                <td id="claude-input-1" class="p-4"></td>
+                <td id="claude-input-2" class="p-4"></td>
+                <td id="gpt-input-1" class="p-4"></td>
+                <td id="gpt-input-2" class="p-4"></td>
             </tr>
             <tr>
-                <td class="component-column">LLM Output Cost</td>
-                <td id="kiri-output-1"></td>
-                <td id="kiri-output-2"></td>
-                <td id="claude-output-1"></td>
-                <td id="claude-output-2"></td>
-                <td id="gpt-output-1"></td>
-                <td id="gpt-output-2"></td>
+                <td class="component-column p-4">LLM Output Cost</td>
+                <td id="kiri-output-1" class="p-4"></td>
+                <td id="kiri-output-2" class="p-4"></td>
+                <td id="claude-output-1" class="p-4"></td>
+                <td id="claude-output-2" class="p-4"></td>
+                <td id="gpt-output-1" class="p-4"></td>
+                <td id="gpt-output-2" class="p-4"></td>
             </tr>
             <tr>
-                <td class="component-column">Embedding Cost</td>
-                <td id="openai-embed-1"></td>
-                <td id="claude-embed-1"></td>
-                <td id="openai-embed-2"></td>
-                <td id="claude-embed-2"></td>
-                <td id="openai-embed-3"></td>
-                <td id="claude-embed-3"></td>
+                <td class="component-column p-4">Embedding Cost</td>
+                <td id="openai-embed-1" class="p-4"></td>
+                <td id="claude-embed-1" class="p-4"></td>
+                <td id="openai-embed-2" class="p-4"></td>
+                <td id="claude-embed-2" class="p-4"></td>
+                <td id="openai-embed-3" class="p-4"></td>
+                <td id="claude-embed-3" class="p-4"></td>
             </tr>
             <tr>
-                <td class="component-column">Vision Cost</td>
-                <td id="kiri-vision-1"></td>
-                <td id="kiri-vision-2"></td>
-                <td id="claude-vision-1"></td>
-                <td id="claude-vision-2"></td>
-                <td id="gpt-vision-1"></td>
-                <td id="gpt-vision-2"></td>
+                <td class="component-column p-4">Vision Cost</td>
+                <td id="kiri-vision-1" class="p-4"></td>
+                <td id="kiri-vision-2" class="p-4"></td>
+                <td id="claude-vision-1" class="p-4"></td>
+                <td id="claude-vision-2" class="p-4"></td>
+                <td id="gpt-vision-1" class="p-4"></td>
+                <td id="gpt-vision-2" class="p-4"></td>
             </tr>
-            <tr class="total-row">
-                <td class="component-column">Total Cost</td>
-                <td id="kiri-total-1"></td>
-                <td id="kiri-total-2"></td>
-                <td id="claude-total-1"></td>
-                <td id="claude-total-2"></td>
-                <td id="gpt-total-1"></td>
-                <td id="gpt-total-2"></td>
+            <tr class="total-row bg-gray-700 font-bold">
+                <td class="component-column p-4">Total Cost</td>
+                <td id="kiri-total-1" class="p-4"></td>
+                <td id="kiri-total-2" class="p-4"></td>
+                <td id="claude-total-1" class="p-4"></td>
+                <td id="claude-total-2" class="p-4"></td>
+                <td id="gpt-total-1" class="p-4"></td>
+                <td id="gpt-total-2" class="p-4"></td>
             </tr>
         </tbody>
     </table>
 
     <script>
         function calculateCosts() {
-            document.body.style.backgroundColor = '#e3f2fd';
             const numRequests = parseFloat(document.getElementById('num-requests').value);
             const avgInputTokens = parseFloat(document.getElementById('avg-input-tokens').value);
             const avgOutputTokens = parseFloat(document.getElementById('avg-output-tokens').value);
