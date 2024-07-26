@@ -347,7 +347,7 @@
           placeholder="Image URL (optional)"
           class="p-4 w-full rounded-full border-none bg-gray-100 mt-6 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
         />
-        <!-- <div class="flex space-x-4 mt-6">
+        <div class="flex space-x-4 mt-6">
           <button
             id="record-button"
             onclick="startRecording()"
@@ -363,15 +363,15 @@
           >
             Stop Recording
           </button>
-        </div> -->
+        </div>
       </div>
     </div>
 
     <script>
       // Initialize Parse
       Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
-      Parse.serverURL = 'https://parse-dev.evalley.io/parse'; // Replace with your server URL
-      Parse.liveQueryServerURL = 'wss://parse-dev.evalley.io/parse';
+      Parse.serverURL = 'http://192.168.1.70:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://92.168.1.70:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -751,6 +751,7 @@
             page: 1,
             limit: 50,
           });
+          console.log(result)
           const chatMessages = document.getElementById('chat-messages');
           chatMessages.innerHTML = ''; // Clear existing messages
           const messageIds = new Set(); // To keep track of displayed message IDs
@@ -924,7 +925,7 @@
 
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'ws://192.168.1.70:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
 

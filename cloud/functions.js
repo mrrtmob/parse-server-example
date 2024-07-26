@@ -115,6 +115,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   const userQuery = new Parse.Query(Parse.User);
   userQuery.containedIn("objectId", userIds);
   const users = await userQuery.find({ useMasterKey: true });
+  console.log(results)
   const userMap = Object.fromEntries(users.map(user => [user.id, user]));
 
   return {
@@ -139,14 +140,17 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 });
 
 Parse.Cloud.define("createMessage", async (request) => {
-  const { roomId, text, imageUrl, userId, username } = request.params;
+  const { roomId, text, imageUrl, username } = request.params;
+  const access_token = request.headers.authorization.split(' ')[1]
+
+  const user = await checkCurrentUser(access_token)
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
 
   message.set("roomId", roomId);
   message.set("text", text || "");
-  message.set("userId", String(userId)); // Ensure userId is stored as a string
+  message.set("userId", user.id.toString()); // Ensure userId is stored as a string
   message.set("username", username);
   message.set("imageUrl", imageUrl || null);
 
@@ -164,7 +168,7 @@ Parse.Cloud.define("createMessage", async (request) => {
 });
 
 Parse.Cloud.define("createPrivateRoom", async (request) => {
-  const { otherUserId, roomName } = request.params;
+  const { otherUserId, roomName = "Room name" } = request.params;
 
   const access_token = request.headers.authorization.split(' ')[1]
 
@@ -255,8 +259,10 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
       id: room.id,
       name: otherUserDetails.name, // Set room name to other user's name
       otherUser: otherUserDetails,
-      roomIdentifier: room.get("roomIdentifier")
-    };
+      roomIdentifier: room.get("roomIdentifier"),
+      lastMessage: "last message",
+      unSeenCount: 10
+    }
   }));
 });
 
