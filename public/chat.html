@@ -11,6 +11,55 @@
       rel="stylesheet"
     />
     <style>
+      .room-button {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition:
+          background-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      .room-button:hover {
+        background-color: #f1f1f1;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .room-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: #3b82f6; /* Use a modern blue */
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+      }
+
+      .delete-button {
+        background-color: #ef4444; /* Modern red */
+        color: white;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        transition: background-color 0.2s;
+      }
+
+      .delete-button:hover {
+        background-color: #dc2626; /* Darker red on hover */
+      }
+
+      .delete-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5);
+      }
       /* General styles */
       body {
         font-family: 'Inter', sans-serif;
@@ -249,7 +298,7 @@
             />
             <button
               onclick="createPrivateRoom()"
-              class="mt-2 w-full bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
+              class="mt-2 mb-4 w-full bg-purple-500 text-white p-2 rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors duration-200"
             >
               Start Private Chat
             </button>
