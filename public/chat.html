@@ -218,7 +218,7 @@
       class="hidden flex-1 flex overflow-hidden bg-white rounded-xl shadow-lg m-6"
     >
       <div id="rooms-screen" class="w-1/3 bg-gray-100 p-6 overflow-y-auto border-r">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">Rooms</h2>
+        <!-- <h2 class="text-2xl font-bold mb-6 text-gray-800">Rooms</h2>
         <div id="public-rooms" class="mb-8">
           <h3 class="text-lg font-semibold mb-4 text-gray-700">Public Rooms</h3>
           <div id="room-list" class="space-y-4"></div>
@@ -236,10 +236,10 @@
               Create Room
             </button>
           </div>
-        </div>
+        </div> -->
+        <div id="room-list" class="space-y-4"></div>
         <div id="private-chat-section">
           <h3 class="text-lg font-semibold mb-4 text-gray-700">Private Chats</h3>
-          <div id="private-rooms" class="space-y-4 mb-4"></div>
           <div>
             <input
               type="text"
@@ -253,6 +253,7 @@
             >
               Start Private Chat
             </button>
+            <div id="private-rooms" class="space-y-4 mb-4"></div>
           </div>
         </div>
       </div>
@@ -320,8 +321,8 @@
     <script>
       // Initialize Parse
       Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
-      Parse.serverURL = 'https://parse-dev.evalley.io/parse'; // Replace with your server URL
-      Parse.liveQueryServerURL = 'wss://parse-dev.evalley.io/parse';
+      Parse.serverURL = 'http://localhost:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://localhost:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -567,25 +568,51 @@
             if (currentRoom && currentRoom.id === roomId) {
               // If the deleted room was the current room, clear the chat screen
               currentRoom = null;
-              document.getElementById('current-room').textContent = 'No room selected';
-              document.getElementById('chat-messages').innerHTML = '';
+              const currentRoomElement = document.getElementById('current-room');
+              if (currentRoomElement) {
+                currentRoomElement.textContent = 'No room selected';
+              }
+              const chatMessagesElement = document.getElementById('chat-messages');
+              if (chatMessagesElement) {
+                chatMessagesElement.innerHTML = '';
+              }
+            }
+
+            // Optionally, you can add a visual feedback that the room was deleted
+            const feedbackElement = document.createElement('p');
+            feedbackElement.textContent = 'Room deleted successfully';
+            feedbackElement.className = 'text-green-500 mb-2';
+            const roomList = document.getElementById('room-list');
+            if (roomList) {
+              roomList.insertBefore(feedbackElement, roomList.firstChild);
+              setTimeout(() => feedbackElement.remove(), 3000); // Remove the message after 3 seconds
             }
           } catch (error) {
             console.error('Error deleting room:', error);
             alert('Failed to delete room. ' + error.message);
+
+            // Show error message in the room list
+            const errorElement = document.createElement('p');
+            errorElement.textContent = 'Failed to delete room. Please try again.';
+            errorElement.className = 'text-red-500 mb-2';
+            const roomList = document.getElementById('room-list');
+            if (roomList) {
+              roomList.insertBefore(errorElement, roomList.firstChild);
+              setTimeout(() => errorElement.remove(), 3000); // Remove the message after 3 seconds
+            }
           }
         }
       }
 
       async function createPrivateRoom() {
-        console.error(currentUser)
+        console.error(currentUser);
         const otherUsername = document.getElementById('private-chat-user').value.trim();
         if (otherUsername && otherUsername !== currentUser.name) {
           try {
             const roomName = `Private: ${currentUser.name} & ${otherUsername}`;
             const room = await makeAuthenticatedRequest('createPrivateRoom', {
               otherUserId: otherUsername,
-              roomName: roomName
+              roomName: roomName,
             });
             document.getElementById('private-chat-user').value = '';
             await loadPrivateRooms();
@@ -613,9 +640,7 @@
         privateRoomsDiv.innerHTML = getLoadingRoomHTML(3); // Show 3 loading skeletons
 
         try {
-          const privateRooms = await makeAuthenticatedRequest('listPrivateRooms', {
-            username: currentUser.name,
-          });
+          const privateRooms = await makeAuthenticatedRequest('listPrivateRooms');
           privateRoomsDiv.innerHTML = '';
           privateRooms.forEach(room => {
             const button = createRoomButton(room);
@@ -850,7 +875,7 @@
 
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
 

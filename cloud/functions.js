@@ -1,5 +1,5 @@
 import axios from 'axios'
-
+import { v4 as uuidv4 } from 'uuid';
 async function checkCurrentUser(accessToken) {
   // Validate the access token
   if (!accessToken) {
@@ -170,14 +170,14 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
 
   const user = await checkCurrentUser(access_token)
 
-  const currentUsername = user.name
+  // const currentUsername = user.name
 
   const otherUser = await getUserInfoById(otherUserId)
 
-  const otherUsername = otherUser.name
+  // const otherUsername = otherUser.name
 
   // Create a unique room identifier
-  const roomIdentifier = [currentUsername, otherUsername].sort().join('_');
+  const roomIdentifier = uuidv4();
 
   // Check if a private room between these users already exists
   const query = new Parse.Query(Room);
@@ -197,17 +197,17 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("users", [currentUsername, otherUsername]);
+  room.set("users", [user, otherUser]);
   room.set("roomIdentifier", roomIdentifier);
 
   // Set ACL
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  acl.setReadAccess(currentUsername, true);
-  acl.setWriteAccess(currentUsername, true);
-  acl.setReadAccess(otherUsername, true);
-  acl.setWriteAccess(otherUsername, true);
+  acl.setReadAccess(user.id.toString(), true);
+  acl.setWriteAccess(user.id.toString(), true);
+  acl.setReadAccess(otherUser.id.toString(), true);
+  acl.setWriteAccess(otherUser.id.toString(), true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
@@ -221,15 +221,42 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
 });
 
 Parse.Cloud.define("listPrivateRooms", async (request) => {
-  const { username } = request.params;
+  const access_token = request.headers.authorization.split(' ')[1];
+  const user = await checkCurrentUser(access_token);
+
+  const currentUserId = user.id;
+
   const query = new Parse.Query(Room);
   query.equalTo("isPrivate", true);
-  query.equalTo("users", username);
+  query.equalTo("users", user);
   const rooms = await query.find({ useMasterKey: true });
-  return rooms.map(room => ({
-    id: room.id,
-    name: room.get("name"),
-    users: room.get("users")
+
+  return Promise.all(rooms.map(async room => {
+    const users = room.get("users");
+
+    // Find the other user object
+    const otherUser = users.find(u => u.id !== currentUserId);
+
+    // Fetch the other user's details
+    let otherUserDetails = { id: "Unknown", name: "Unknown User" };
+    if (otherUser) {
+      try {
+        const fetchedUser = await getUserInfoById(otherUser.id);
+        otherUserDetails = {
+          id: fetchedUser.id,
+          name: fetchedUser.name
+        };
+      } catch (error) {
+        console.error(`Error fetching user details for ID ${otherUser.id}:`, error);
+      }
+    }
+
+    return {
+      id: room.id,
+      name: otherUserDetails.name, // Set room name to other user's name
+      otherUser: otherUserDetails,
+      roomIdentifier: room.get("roomIdentifier")
+    };
   }));
 });
 
@@ -263,9 +290,16 @@ Parse.Cloud.beforeSave("Room", (request) => {
 // Function to delete a room
 Parse.Cloud.define("deleteRoom", async (request) => {
   const { roomId } = request.params;
+  const access_token = request.headers.authorization.split(' ')[1];
 
   if (!roomId) {
     throw new Parse.Error(Parse.Error.INVALID_PARAMETER, "Room ID is required");
+  }
+
+  // Get the current user
+  const currentUser = await checkCurrentUser(access_token);
+  if (!currentUser) {
+    throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, "Invalid user session");
   }
 
   const roomQuery = new Parse.Query("Room");
@@ -273,6 +307,14 @@ Parse.Cloud.define("deleteRoom", async (request) => {
 
   if (!room) {
     throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found");
+  }
+
+  // Check if the current user is a member of the room
+  const roomUsers = room.get("users");
+  const isUserInRoom = roomUsers.some(user => user.id === currentUser.id);
+
+  if (!isUserInRoom) {
+    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "You do not have permission to delete this room");
   }
 
   // Delete all messages in the room
