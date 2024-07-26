@@ -17,10 +17,10 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100">
+<body class="bg-white text-black">
     <h1 class="fade-in text-center text-4xl font-bold mb-8">LLM Cost Comparison</h1>
     
-    <div class="info fade-in bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
+    <div class="info fade-in bg-white p-6 rounded-lg shadow-lg mb-8 border border-gray-300">
         <h2 class="text-2xl font-semibold mb-4">Model Pricing:</h2>
         <ul class="list-disc list-inside">
             <li>Kiri:
@@ -57,21 +57,21 @@
         <h2 class="text-2xl font-semibold mb-4">Calculation Parameters:</h2>
         <div class="input-group mb-4">
             <label for="num-requests" class="block mb-2">Number of requests:</label>
-            <input type="number" id="num-requests" value="100000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
+            <input type="number" id="num-requests" value="100000" class="w-full p-2 rounded bg-white border border-gray-300 focus:border-blue-500 focus:outline-none">
         </div>
         <div class="input-group mb-4">
             <label for="avg-input-tokens" class="block mb-2">Average input tokens:</label>
-            <input type="number" id="avg-input-tokens" value="1000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
+            <input type="number" id="avg-input-tokens" value="1000" class="w-full p-2 rounded bg-white border border-gray-300 focus:border-blue-500 focus:outline-none">
         </div>
         <div class="input-group mb-4">
             <label for="avg-output-tokens" class="block mb-2">Average output tokens:</label>
-            <input type="number" id="avg-output-tokens" value="2000" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 focus:outline-none">
+            <input type="number" id="avg-output-tokens" value="2000" class="w-full p-2 rounded bg-white border border-gray-300 focus:border-blue-500 focus:outline-none">
         </div>
     </div>
 
-    <table class="cost-table fade-in w-full text-right bg-gray-800 rounded-lg shadow-lg">
+    <table class="cost-table fade-in w-full text-right bg-white rounded-lg shadow-lg border border-gray-300">
         <thead>
-            <tr class="bg-gray-700">
+            <tr class="bg-gray-200">
                 <th class="p-4">Component</th>
                 <th class="p-4">Kiri + OpenAI Embedding</th>
                 <th class="p-4">Kiri + Claude Embedding</th>
@@ -118,7 +118,7 @@
                 <td id="gpt-vision-1" class="p-4"></td>
                 <td id="gpt-vision-2" class="p-4"></td>
             </tr>
-            <tr class="total-row bg-gray-700 font-bold">
+            <tr class="total-row bg-gray-300 font-bold">
                 <td class="component-column p-4">Total Cost</td>
                 <td id="kiri-total-1" class="p-4"></td>
                 <td id="kiri-total-2" class="p-4"></td>
