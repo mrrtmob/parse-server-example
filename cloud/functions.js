@@ -1,3 +1,48 @@
+import axios from 'axios'
+
+async function checkCurrentUser(accessToken) {
+  // Validate the access token
+  if (!accessToken) {
+    throw new Error("Access token is required");
+  }
+
+  try {
+    const response = await axios.get('https://mimi-dev.evalley.io/api/v1/auth/profile', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    // Return the user profile data
+    return response.data.data.item;
+
+  } catch (error) {
+    console.error("Error fetching user profile:", error.message);
+    throw new Error("An error occurred while fetching the user profile");
+  }
+}
+
+async function getUserInfoById(userId) {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  try {
+    const response = await axios.get(`https://mimi-dev.evalley.io/api/v1/auth/user-profile/${userId}`, {
+      headers: {
+        Expect: "cbfcc213cc2efece05f8c35889f5ddfa359140fe384ec90098a9956710638acb18f500147615127b425121be2951b8eab0643583867fcd77f2003b0c881a838f0c7dda5837ccafde873649be636e090ecafdc932a427abb94ae22e4dc7e44dd1a87de592ef96d5a90a3f6ab264a8b818",
+      },
+    });
+
+    // Return the user profile data
+    return response.data.data.item;
+
+  } catch (error) {
+    console.error("Error fetching user profile by ID:", error.message);
+    throw new Error("An error occurred while fetching the user profile by ID");
+  }
+}
+
 // Define Parse Classes
 const Room = Parse.Object.extend("Room");
 const Message = Parse.Object.extend("Message");
@@ -119,7 +164,17 @@ Parse.Cloud.define("createMessage", async (request) => {
 });
 
 Parse.Cloud.define("createPrivateRoom", async (request) => {
-  const { otherUsername, roomName, currentUsername } = request.params;
+  const { otherUserId, roomName } = request.params;
+
+  const access_token = request.headers.authorization.split(' ')[1]
+
+  const user = await checkCurrentUser(access_token)
+
+  const currentUsername = user.name
+
+  const otherUser = await getUserInfoById(otherUserId)
+
+  const otherUsername = otherUser.name
 
   // Create a unique room identifier
   const roomIdentifier = [currentUsername, otherUsername].sort().join('_');
