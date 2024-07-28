@@ -115,6 +115,73 @@ Parse.Cloud.define("listRooms", async (request) => {
   };
 });
 
+Parse.Cloud.define("listPrivateRooms", async (request) => {
+  const access_token = request.headers.authorization.split(' ')[1];
+  const user = await checkCurrentUser(access_token);
+  const currentUserId = user.id;
+
+  const query = new Parse.Query(Room);
+  query.equalTo("isPrivate", true);
+  query.equalTo("users", user);
+  const rooms = await query.find({ useMasterKey: true });
+
+  return Promise.all(rooms.map(async room => {
+    const users = room.get("users");
+    const otherUser = users.find(u => u.id !== currentUserId);
+
+    let otherUserDetails = { id: "Unknown", name: "Unknown User" };
+    if (otherUser) {
+      try {
+        const fetchedUser = await getUserInfoById(otherUser.id);
+        otherUserDetails = {
+          id: fetchedUser.id,
+          name: fetchedUser.name
+        };
+      } catch (error) {
+        console.error(`Error fetching user details for ID ${otherUser.id}:`, error);
+      }
+    }
+
+    // Fetch the last message
+    const lastMessageQuery = new Parse.Query(Message);
+    lastMessageQuery.equalTo("roomId", room.id);
+    lastMessageQuery.descending("createdAt");
+    lastMessageQuery.limit(1);
+    const lastMessage = await lastMessageQuery.first({ useMasterKey: true });
+
+    let lastMessageText = "No messages yet";
+    let lastMessageTime = null;
+    let unseenCount = 0;
+
+    if (lastMessage) {
+      lastMessageText = lastMessage.get("text") || "Image or audio message";
+      lastMessageTime = lastMessage.createdAt;
+
+      // Check if the current user has seen the last message
+      const seenBy = lastMessage.get("seenBy") || [];
+      if (!seenBy.includes(currentUserId.toString())) {
+        // If the last message is not seen by the current user, count unseen messages
+        const unseenQuery = new Parse.Query(Message);
+        unseenQuery.equalTo("roomId", room.id);
+        unseenQuery.notEqualTo("seenBy", currentUserId.toString());
+        unseenCount = await unseenQuery.count({ useMasterKey: true });
+      }
+    }
+
+    console.log(`Room ${room.id}: Last message seen by ${lastMessage ? lastMessage.get("seenBy") : []}, current user ${currentUserId}, unseen count ${unseenCount}`);
+
+    return {
+      id: room.id,
+      name: otherUserDetails.name,
+      otherUser: otherUserDetails,
+      roomIdentifier: room.get("roomIdentifier"),
+      lastMessage: lastMessageText,
+      lastMessageTime: lastMessageTime,
+      unSeenCount: unseenCount
+    }
+  }));
+});
+
 Parse.Cloud.define("fetchChatMessages", async (request) => {
   const { roomId, page = 1, limit = 50 } = request.params;
   const skip = (page - 1) * limit;
