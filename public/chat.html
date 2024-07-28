@@ -267,25 +267,6 @@
       class="hidden flex-1 flex overflow-hidden bg-white rounded-xl shadow-lg m-6"
     >
       <div id="rooms-screen" class="w-1/3 bg-gray-100 p-6 overflow-y-auto border-r">
-        <!-- <h2 class="text-2xl font-bold mb-6 text-gray-800">Rooms</h2>
-        <div id="public-rooms" class="mb-8">
-          <h3 class="text-lg font-semibold mb-4 text-gray-700">Public Rooms</h3>
-          <div id="room-list" class="space-y-4"></div>
-          <div class="mt-4">
-            <input
-              type="text"
-              id="room-input"
-              placeholder="Enter room name"
-              class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onclick="createRoom()"
-              class="mt-2 w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-            >
-              Create Room
-            </button>
-          </div>
-        </div> -->
         <div id="room-list" class="space-y-4"></div>
         <div id="private-chat-section">
           <h3 class="text-lg font-semibold mb-4 text-gray-700">Private Chats</h3>
@@ -370,8 +351,8 @@
     <script>
       // Initialize Parse
       Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
-      Parse.serverURL = 'https://parse-dev.evalley.io/parse'; // Replace with your server URL
-      Parse.liveQueryServerURL = 'wss://parse-dev.evalley.io/parse';
+      Parse.serverURL = 'http://localhost:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://localhost:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -493,7 +474,7 @@
       }
 
       function createRoomButton(room) {
-        console.log('Creating room button for:', room); // Debug log
+        console.log('Creating room button for:', room);
 
         const button = document.createElement('div');
         button.className =
@@ -510,34 +491,56 @@
 
         let displayName = room.name;
         if (room.isPrivate) {
-          const otherUser = room.users.find(username => username !== currentUser.name);
+          const otherUser = room.otherUser.name;
           displayName = `Chat with ${otherUser}`;
           icon.textContent = otherUser.charAt(0).toUpperCase();
         } else {
           icon.textContent = room.name.charAt(0).toUpperCase();
         }
 
-        const name = document.createElement('span');
+        const nameAndPreview = document.createElement('div');
+        nameAndPreview.className = 'ml-3';
+
+        const name = document.createElement('div');
         name.textContent = displayName;
-        name.className = 'ml-3 font-medium';
+        name.className = 'font-medium';
+
+        const preview = document.createElement('div');
+        preview.className = 'text-sm text-gray-500';
+        preview.textContent = room.lastMessage || 'No messages yet';
+
+        nameAndPreview.appendChild(name);
+        nameAndPreview.appendChild(preview);
 
         leftContent.appendChild(icon);
-        leftContent.appendChild(name);
+        leftContent.appendChild(nameAndPreview);
 
         button.appendChild(leftContent);
 
-        // Always add delete button for debugging
+        const rightContent = document.createElement('div');
+        rightContent.className = 'flex flex-col items-end';
+
+        if (room.unSeenCount > 0) {
+          const unreadBadge = document.createElement('span');
+          unreadBadge.className =
+            'unread-badge bg-blue-500 text-white text-xs rounded-full px-2 py-1';
+          unreadBadge.textContent = room.unSeenCount;
+          rightContent.appendChild(unreadBadge);
+        }
+
         const deleteButton = document.createElement('button');
         deleteButton.className =
-          'delete-button bg-red-500 text-white px-2 py-1 rounded-md text-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 ml-2';
+          'delete-button bg-red-500 text-white px-2 py-1 rounded-md text-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 ml-2 mt-2';
         deleteButton.textContent = 'Delete';
         deleteButton.onclick = e => {
-          e.stopPropagation(); // Prevent room join when clicking delete
+          e.stopPropagation();
           deleteRoom(room.id);
         };
-        button.appendChild(deleteButton);
+        rightContent.appendChild(deleteButton);
 
-        console.log('Room button created:', button.outerHTML); // Debug log
+        button.appendChild(rightContent);
+
+        console.log('Room button created:', button.outerHTML);
 
         return button;
       }
@@ -684,23 +687,6 @@
         }
       }
 
-      async function loadPrivateRooms() {
-        const privateRoomsDiv = document.getElementById('private-rooms');
-        privateRoomsDiv.innerHTML = getLoadingRoomHTML(3); // Show 3 loading skeletons
-
-        try {
-          const privateRooms = await makeAuthenticatedRequest('listPrivateRooms');
-          privateRoomsDiv.innerHTML = '';
-          privateRooms.forEach(room => {
-            const button = createRoomButton(room);
-            privateRoomsDiv.appendChild(button);
-          });
-        } catch (error) {
-          console.error('Error loading private rooms:', error);
-          privateRoomsDiv.innerHTML = '<p class="text-red-500">Error loading private rooms</p>';
-        }
-      }
-
       function joinRoom(eventOrRoom) {
         let room;
         if (eventOrRoom instanceof Event) {
@@ -751,7 +737,7 @@
             page: 1,
             limit: 50,
           });
-          console.log(result)
+          console.log(result);
           const chatMessages = document.getElementById('chat-messages');
           chatMessages.innerHTML = ''; // Clear existing messages
           const messageIds = new Set(); // To keep track of displayed message IDs
@@ -846,7 +832,9 @@
 
       async function startRecording() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        media;
+
+        Recorder = new MediaRecorder(stream);
         mediaRecorder.start();
 
         mediaRecorder.ondataavailable = function (event) {
@@ -925,7 +913,7 @@
 
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
 
