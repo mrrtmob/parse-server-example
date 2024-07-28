@@ -207,126 +207,99 @@ Parse.Cloud.define("createMessage", async (request) => {
 Parse.Cloud.define("createPrivateRoom", async (request) => {
   const { otherUserId, roomName = "Room name" } = request.params;
 
-  const access_token = request.headers.authorization.split(' ')[1];
+  const access_token = request.headers.authorization.split(' ')[1]
 
-  const user = await checkCurrentUser(access_token);
-  const otherUser = await getUserInfoById(otherUserId);
+  const user = await checkCurrentUser(access_token)
+  const otherUser = await getUserInfoById(otherUserId)
 
-  const currentUserId = user.id.toString();
-  const otherUserIdString = otherUser.id.toString();
+  const roomIdentifier = uuidv4();
 
-  // Check if a private room already exists between these users
-  const existingRoomQuery = new Parse.Query(Room);
-  existingRoomQuery.equalTo("isPrivate", true);
-  existingRoomQuery.containsAll("userIds", [currentUserId, otherUserIdString]);
-
-  const existingRoom = await existingRoomQuery.first({ useMasterKey: true });
+  const query = new Parse.Query(Room);
+  query.equalTo("roomIdentifier", roomIdentifier);
+  query.equalTo("isPrivate", true);
+  const existingRoom = await query.first({ useMasterKey: true });
 
   if (existingRoom) {
-    console.log(`Existing room found: ${existingRoom.id}`);
     return {
       id: existingRoom.id,
       name: existingRoom.get("name"),
-      userIds: existingRoom.get("userIds"),
+      users: existingRoom.get("users"),
       roomIdentifier: existingRoom.get("roomIdentifier")
     };
   }
 
-  // If no existing room, create a new one
-  const roomIdentifier = uuidv4();
-
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("userIds", [currentUserId, otherUserIdString]);
+  room.set("users", [user, otherUser]);
   room.set("roomIdentifier", roomIdentifier);
 
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  acl.setReadAccess(currentUserId, true);
-  acl.setWriteAccess(currentUserId, true);
-  acl.setReadAccess(otherUserIdString, true);
-  acl.setWriteAccess(otherUserIdString, true);
+  acl.setReadAccess(user.id.toString(), true);
+  acl.setWriteAccess(user.id.toString(), true);
+  acl.setReadAccess(otherUser.id.toString(), true);
+  acl.setWriteAccess(otherUser.id.toString(), true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
 
-  console.log(`New room created: ${room.id}`);
-
   return {
     id: room.id,
     name: room.get("name"),
-    userIds: room.get("userIds"),
+    users: room.get("users"),
     roomIdentifier: room.get("roomIdentifier")
   };
 });
 
-Parse.Cloud.define("listPrivateRooms", async (request) => {
-  const access_token = request.headers.authorization.split(' ')[1];
-  const user = await checkCurrentUser(access_token);
-  const currentUserId = user.id;
+Parse.Cloud.define("createPrivateRoom", async (request) => {
+  const { otherUserId, roomName = "Room name" } = request.params;
+
+  const access_token = request.headers.authorization.split(' ')[1]
+
+  const user = await checkCurrentUser(access_token)
+  const otherUser = await getUserInfoById(otherUserId)
+
+  const roomIdentifier = uuidv4();
 
   const query = new Parse.Query(Room);
+  query.equalTo("roomIdentifier", roomIdentifier);
   query.equalTo("isPrivate", true);
-  query.equalTo("users", user);
-  const rooms = await query.find({ useMasterKey: true });
+  const existingRoom = await query.first({ useMasterKey: true });
 
-  return Promise.all(rooms.map(async room => {
-    const users = room.get("users");
-    const otherUser = users.find(u => u.id !== currentUserId);
-
-    let otherUserDetails = { id: "Unknown", name: "Unknown User" };
-    if (otherUser) {
-      try {
-        const fetchedUser = await getUserInfoById(otherUser.id);
-        otherUserDetails = {
-          id: fetchedUser.id,
-          name: fetchedUser.name
-        };
-      } catch (error) {
-        console.error(`Error fetching user details for ID ${otherUser.id}:`, error);
-      }
-    }
-
-    // Fetch the last message
-    const lastMessageQuery = new Parse.Query(Message);
-    lastMessageQuery.equalTo("roomId", room.id);
-    lastMessageQuery.descending("createdAt");
-    lastMessageQuery.limit(1);
-    const lastMessage = await lastMessageQuery.first({ useMasterKey: true });
-
-    let lastMessageText = "No messages yet";
-    let lastMessageTime = null;
-    let unseenCount = 0;
-
-    if (lastMessage) {
-      lastMessageText = lastMessage.get("text") || "Image or audio message";
-      lastMessageTime = lastMessage.createdAt;
-
-      // Check if the current user has seen the last message
-      const seenBy = lastMessage.get("seenBy") || [];
-      if (!seenBy.includes(currentUserId.toString())) {
-        // If the last message is not seen by the current user, count unseen messages
-        const unseenQuery = new Parse.Query(Message);
-        unseenQuery.equalTo("roomId", room.id);
-        unseenQuery.notEqualTo("seenBy", currentUserId.toString());
-        unseenCount = await unseenQuery.count({ useMasterKey: true });
-      }
-    }
-
-    console.log(`Room ${room.id}: Last message seen by ${lastMessage ? lastMessage.get("seenBy") : []}, current user ${currentUserId}, unseen count ${unseenCount}`);
-
+  if (existingRoom) {
     return {
-      id: room.id,
-      name: otherUserDetails.name,
-      otherUser: otherUserDetails,
-      roomIdentifier: room.get("roomIdentifier"),
-      lastMessage: lastMessageText,
-      lastMessageTime: lastMessageTime,
-      unSeenCount: unseenCount
-    }
-  }));
+      id: existingRoom.id,
+      name: existingRoom.get("name"),
+      users: existingRoom.get("users"),
+      roomIdentifier: existingRoom.get("roomIdentifier")
+    };
+  }
+
+  const room = new Room();
+  room.set("name", roomName);
+  room.set("isPrivate", true);
+  room.set("users", [user, otherUser]);
+  room.set("roomIdentifier", roomIdentifier);
+
+  const acl = new Parse.ACL();
+  acl.setPublicReadAccess(false);
+  acl.setPublicWriteAccess(false);
+  acl.setReadAccess(user.id.toString(), true);
+  acl.setWriteAccess(user.id.toString(), true);
+  acl.setReadAccess(otherUser.id.toString(), true);
+  acl.setWriteAccess(otherUser.id.toString(), true);
+  room.setACL(acl);
+
+  await room.save(null, { useMasterKey: true });
+
+  return {
+    id: room.id,
+    name: room.get("name"),
+    users: room.get("users"),
+    roomIdentifier: room.get("roomIdentifier")
+  };
 });
 
 Parse.Cloud.define("addUserToRoom", async (request) => {
