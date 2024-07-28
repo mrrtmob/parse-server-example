@@ -279,18 +279,31 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const user = await checkCurrentUser(access_token);
   const otherUser = await getUserInfoById(otherUserId);
 
-  // Check if a room already exists between these two users
-  const existingRoomQuery = new Parse.Query(Room);
-  existingRoomQuery.equalTo("isPrivate", true);
-  existingRoomQuery.containsAll("users", [user.id, otherUser.id]);
-  const existingRoom = await existingRoomQuery.first({ useMasterKey: true });
+  // Ensure we're using string IDs
+  const currentUserId = user.id.toString();
+  const otherUserIdString = otherUser.id.toString();
+
+  // Query for existing private rooms that contain both users
+  const query = new Parse.Query(Room);
+  query.equalTo("isPrivate", true);
+  query.containedIn("userIds", [currentUserId, otherUserIdString]);
+
+  const rooms = await query.find({ useMasterKey: true });
+
+  // Check if a room already exists with exactly these two users
+  const existingRoom = rooms.find(room => {
+    const userIds = room.get("userIds") || [];
+    return userIds.length === 2 &&
+      userIds.includes(currentUserId) &&
+      userIds.includes(otherUserIdString);
+  });
 
   if (existingRoom) {
     console.log(`Existing room found: ${existingRoom.id}`);
     return {
       id: existingRoom.id,
       name: existingRoom.get("name"),
-      users: existingRoom.get("users"),
+      userIds: existingRoom.get("userIds"),
       roomIdentifier: existingRoom.get("roomIdentifier")
     };
   }
@@ -301,16 +314,16 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("users", [user.id, otherUser.id]);  // Store user IDs instead of user objects
+  room.set("userIds", [currentUserId, otherUserIdString]);  // Store user IDs as strings
   room.set("roomIdentifier", roomIdentifier);
 
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  acl.setReadAccess(user.id, true);
-  acl.setWriteAccess(user.id, true);
-  acl.setReadAccess(otherUser.id, true);
-  acl.setWriteAccess(otherUser.id, true);
+  acl.setReadAccess(currentUserId, true);
+  acl.setWriteAccess(currentUserId, true);
+  acl.setReadAccess(otherUserIdString, true);
+  acl.setWriteAccess(otherUserIdString, true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
@@ -319,56 +332,7 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   return {
     id: room.id,
     name: room.get("name"),
-    users: room.get("users"),
-    roomIdentifier: room.get("roomIdentifier")
-  };
-});
-
-Parse.Cloud.define("createPrivateRoom", async (request) => {
-  const { otherUserId, roomName = "Room name" } = request.params;
-
-  const access_token = request.headers.authorization.split(' ')[1]
-
-  const user = await checkCurrentUser(access_token)
-  const otherUser = await getUserInfoById(otherUserId)
-
-  const roomIdentifier = uuidv4();
-
-  const query = new Parse.Query(Room);
-  query.equalTo("roomIdentifier", roomIdentifier);
-  query.equalTo("isPrivate", true);
-  const existingRoom = await query.first({ useMasterKey: true });
-
-  if (existingRoom) {
-    return {
-      id: existingRoom.id,
-      name: existingRoom.get("name"),
-      users: existingRoom.get("users"),
-      roomIdentifier: existingRoom.get("roomIdentifier")
-    };
-  }
-
-  const room = new Room();
-  room.set("name", roomName);
-  room.set("isPrivate", true);
-  room.set("users", [user, otherUser]);
-  room.set("roomIdentifier", roomIdentifier);
-
-  const acl = new Parse.ACL();
-  acl.setPublicReadAccess(false);
-  acl.setPublicWriteAccess(false);
-  acl.setReadAccess(user.id.toString(), true);
-  acl.setWriteAccess(user.id.toString(), true);
-  acl.setReadAccess(otherUser.id.toString(), true);
-  acl.setWriteAccess(otherUser.id.toString(), true);
-  room.setACL(acl);
-
-  await room.save(null, { useMasterKey: true });
-
-  return {
-    id: room.id,
-    name: room.get("name"),
-    users: room.get("users"),
+    userIds: room.get("userIds"),
     roomIdentifier: room.get("roomIdentifier")
   };
 });
