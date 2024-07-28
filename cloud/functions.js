@@ -282,8 +282,7 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   // Check if a room already exists between these two users
   const existingRoomQuery = new Parse.Query(Room);
   existingRoomQuery.equalTo("isPrivate", true);
-  existingRoomQuery.equalTo("users", user);
-  existingRoomQuery.equalTo("users", otherUser);
+  existingRoomQuery.containsAll("users", [user.id, otherUser.id]);
   const existingRoom = await existingRoomQuery.first({ useMasterKey: true });
 
   if (existingRoom) {
@@ -302,16 +301,16 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("users", [user, otherUser]);
+  room.set("users", [user.id, otherUser.id]);  // Store user IDs instead of user objects
   room.set("roomIdentifier", roomIdentifier);
 
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  acl.setReadAccess(user.id.toString(), true);
-  acl.setWriteAccess(user.id.toString(), true);
-  acl.setReadAccess(otherUser.id.toString(), true);
-  acl.setWriteAccess(otherUser.id.toString(), true);
+  acl.setReadAccess(user.id, true);
+  acl.setWriteAccess(user.id, true);
+  acl.setReadAccess(otherUser.id, true);
+  acl.setWriteAccess(otherUser.id, true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
