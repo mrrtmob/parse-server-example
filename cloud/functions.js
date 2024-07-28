@@ -212,10 +212,13 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const user = await checkCurrentUser(access_token);
   const otherUser = await getUserInfoById(otherUserId);
 
+  const currentUserId = user.id.toString();
+  const otherUserIdString = otherUser.id.toString();
+
   // Check if a private room already exists between these users
   const existingRoomQuery = new Parse.Query(Room);
   existingRoomQuery.equalTo("isPrivate", true);
-  existingRoomQuery.containsAll("userIds", [user.id.toString(), otherUser.id.toString()]);
+  existingRoomQuery.containsAll("userIds", [currentUserId, otherUserIdString]);
 
   const existingRoom = await existingRoomQuery.first({ useMasterKey: true });
 
@@ -224,7 +227,7 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
     return {
       id: existingRoom.id,
       name: existingRoom.get("name"),
-      users: existingRoom.get("users"),
+      userIds: existingRoom.get("userIds"),
       roomIdentifier: existingRoom.get("roomIdentifier")
     };
   }
@@ -235,17 +238,16 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   const room = new Room();
   room.set("name", roomName);
   room.set("isPrivate", true);
-  room.set("users", [user, otherUser]);
-  room.set("userIds", [user.id.toString(), otherUser.id.toString()]); // Add this line
+  room.set("userIds", [currentUserId, otherUserIdString]);
   room.set("roomIdentifier", roomIdentifier);
 
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  acl.setReadAccess(user.id.toString(), true);
-  acl.setWriteAccess(user.id.toString(), true);
-  acl.setReadAccess(otherUser.id.toString(), true);
-  acl.setWriteAccess(otherUser.id.toString(), true);
+  acl.setReadAccess(currentUserId, true);
+  acl.setWriteAccess(currentUserId, true);
+  acl.setReadAccess(otherUserIdString, true);
+  acl.setWriteAccess(otherUserIdString, true);
   room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
@@ -255,7 +257,7 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   return {
     id: room.id,
     name: room.get("name"),
-    users: room.get("users"),
+    userIds: room.get("userIds"),
     roomIdentifier: room.get("roomIdentifier")
   };
 });
