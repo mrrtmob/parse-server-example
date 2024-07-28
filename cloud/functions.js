@@ -274,19 +274,20 @@ Parse.Cloud.define("createMessage", async (request) => {
 Parse.Cloud.define("createPrivateRoom", async (request) => {
   const { otherUserId, roomName = "Room name" } = request.params;
 
-  const access_token = request.headers.authorization.split(' ')[1]
+  const access_token = request.headers.authorization.split(' ')[1];
 
-  const user = await checkCurrentUser(access_token)
-  const otherUser = await getUserInfoById(otherUserId)
+  const user = await checkCurrentUser(access_token);
+  const otherUser = await getUserInfoById(otherUserId);
 
-  const roomIdentifier = uuidv4();
-
-  const query = new Parse.Query(Room);
-  query.equalTo("roomIdentifier", roomIdentifier);
-  query.equalTo("isPrivate", true);
-  const existingRoom = await query.first({ useMasterKey: true });
+  // Check if a room already exists between these two users
+  const existingRoomQuery = new Parse.Query(Room);
+  existingRoomQuery.equalTo("isPrivate", true);
+  existingRoomQuery.equalTo("users", user);
+  existingRoomQuery.equalTo("users", otherUser);
+  const existingRoom = await existingRoomQuery.first({ useMasterKey: true });
 
   if (existingRoom) {
+    console.log(`Existing room found: ${existingRoom.id}`);
     return {
       id: existingRoom.id,
       name: existingRoom.get("name"),
@@ -294,6 +295,9 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
       roomIdentifier: existingRoom.get("roomIdentifier")
     };
   }
+
+  // If no existing room, create a new one
+  const roomIdentifier = uuidv4();
 
   const room = new Room();
   room.set("name", roomName);
@@ -312,6 +316,7 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
 
   await room.save(null, { useMasterKey: true });
 
+  console.log(`New room created: ${room.id}`);
   return {
     id: room.id,
     name: room.get("name"),
