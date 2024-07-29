@@ -15,11 +15,11 @@ export const config = {
   masterKey: process.env.MASTER_KEY || 'masterKey', //Add your master key here. Keep it secret!
   serverURL: process.env.SERVER_URL || 'https://parse-dev.evalley.io/parse', // Don't forget to change to https if needed
   allowClientClassCreation: true,
-  fileUpload: {
-    enableForPublic: true,
-    enableForAuthenticated: true,
-    enableForAnonymous: true
-  },
+  // fileUpload: {
+  //   enableForPublic: true,
+  //   enableForAuthenticated: true,
+  //   enableForAnonymous: true
+  // },
   liveQuery: {
     classNames: ['Message', 'Room']
   },
