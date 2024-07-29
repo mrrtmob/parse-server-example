@@ -125,7 +125,7 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
   query.equalTo("userIds", currentUserId);
   const rooms = await query.find({ useMasterKey: true });
 
-  return Promise.all(rooms.map(async room => {
+  const roomDetailsPromises = rooms.map(async room => {
     const userIds = room.get("userIds") || [];
     const otherUserId = userIds.find(id => id !== currentUserId);
 
@@ -135,7 +135,8 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
         const fetchedUser = await getUserInfoById(otherUserId);
         otherUserDetails = {
           id: fetchedUser.id,
-          name: fetchedUser.name
+          name: fetchedUser.name,
+          avatar: fetchedUser.avatar
         };
       } catch (error) {
         console.error(`Error fetching user details for ID ${otherUserId}:`, error);
@@ -178,8 +179,16 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
       lastMessage: lastMessageText,
       lastMessageTime: lastMessageTime,
       unSeenCount: unseenCount
-    }
-  }));
+    };
+  });
+
+  // Resolve all promises and sort by lastMessageTime
+  const roomDetails = await Promise.all(roomDetailsPromises);
+  const sortedRoomDetails = roomDetails.sort((a, b) => {
+    return (b.lastMessageTime || 0) - (a.lastMessageTime || 0); // Sort by descending order
+  });
+
+  return sortedRoomDetails;
 });
 
 Parse.Cloud.define("fetchChatMessages", async (request) => {
@@ -187,6 +196,8 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   const skip = (page - 1) * limit;
   const access_token = request.headers.authorization.split(' ')[1];
   const currentUser = await checkCurrentUser(access_token);
+
+  const profile_url = currentUser.avatar
 
   const query = new Parse.Query(Message);
   query.equalTo("roomId", roomId);
@@ -205,6 +216,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   const users = await userQuery.find({ useMasterKey: true });
   const userMap = Object.fromEntries(users.map(user => [user.id, user]));
 
+
   // Mark messages as seen
   const unseenMessages = results.filter(message =>
     message.get("userId") !== currentUser.id &&
@@ -215,6 +227,8 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
     const seenBy = message.get("seenBy") || [];
     seenBy.push(currentUser.id);
     message.set("seenBy", seenBy);
+    message.set('profile', profile_url)
+
     await message.save(null, { useMasterKey: true });
   }));
 
@@ -228,9 +242,9 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
         username: message.get("username") || (user && user.get("username")) || "Unknown User",
         text: message.get("text") || "",
         createdAt: message.createdAt,
-        profileImageUrl: (user && user.get("profileImageUrl")) || defaultImageUrl,
         imageUrl: message.get("imageUrl") || null,
         audioUrl: message.get("audioUrl") || null,
+        profile: message.get("profile") || defaultImageUrl,
         seenBy: message.get("seenBy") || []
       };
     }),
@@ -242,7 +256,13 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 });
 
 Parse.Cloud.define("createMessage", async (request) => {
-  const { roomId, text, imageUrl, fileUrl, audioUrl, username, userId } = request.params;
+  const { roomId, text, imageUrl, fileUrl, audioUrl } = request.params;
+
+  const access_token = request.headers.authorization.split(' ')[1];
+  const user = await checkCurrentUser(access_token);
+  const userId = user.id.toString();
+  const username = user.username
+  const profile_url = user.avatar
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
@@ -255,6 +275,7 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("fileUrl", fileUrl || null);
   message.set("audioUrl", audioUrl || null);
   message.set("seenBy", [userId]);
+  message.set("profile", profile_url || null)
 
   await message.save(null, { useMasterKey: true });
 
@@ -268,7 +289,8 @@ Parse.Cloud.define("createMessage", async (request) => {
     imageUrl: message.get("imageUrl"),
     fileUrl: message.get("fileUrl"),
     audioUrl: message.get("audioUrl"),
-    seenBy: message.get("seenBy")
+    seenBy: message.get("seenBy"),
+    profile: message.get("profile")
   };
 });
 
