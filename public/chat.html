@@ -329,7 +329,7 @@
             </svg>
           </button>
         </div>
-        <!-- <input
+        <input
           type="text"
           id="image-url-input"
           placeholder="Image URL (optional)"
@@ -350,7 +350,7 @@
             class="flex-1 bg-red-500 text-white p-4 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-md"
           >
             Stop Recording
-          </button> -->
+          </button>
         </div>
       </div>
     </div>
@@ -834,10 +834,8 @@
         }
 
         const text = document.getElementById('message-input').value.trim();
-        <!-- const imageUrl = document.getElementById('image-url-input').value.trim(); -->
-        const imageUrl = ""
-        <!-- const fileInput = document.getElementById('file-upload'); -->
-        const fileInput = ""
+        const imageUrl = document.getElementById('image-url-input').value.trim();
+        const fileInput = document.getElementById('file-upload');
         const file = fileInput.files[0];
 
         let uploadedFileUrl = null;
