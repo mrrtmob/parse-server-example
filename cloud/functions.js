@@ -118,27 +118,27 @@ Parse.Cloud.define("listRooms", async (request) => {
 Parse.Cloud.define("listPrivateRooms", async (request) => {
   const access_token = request.headers.authorization.split(' ')[1];
   const user = await checkCurrentUser(access_token);
-  const currentUserId = user.id;
+  const currentUserId = user.id.toString();
 
   const query = new Parse.Query(Room);
   query.equalTo("isPrivate", true);
-  query.equalTo("users", user);
+  query.equalTo("userIds", currentUserId);
   const rooms = await query.find({ useMasterKey: true });
 
   return Promise.all(rooms.map(async room => {
-    const users = room.get("users");
-    const otherUser = users.find(u => u.id !== currentUserId);
+    const userIds = room.get("userIds") || [];
+    const otherUserId = userIds.find(id => id !== currentUserId);
 
     let otherUserDetails = { id: "Unknown", name: "Unknown User" };
-    if (otherUser) {
+    if (otherUserId) {
       try {
-        const fetchedUser = await getUserInfoById(otherUser.id);
+        const fetchedUser = await getUserInfoById(otherUserId);
         otherUserDetails = {
           id: fetchedUser.id,
           name: fetchedUser.name
         };
       } catch (error) {
-        console.error(`Error fetching user details for ID ${otherUser.id}:`, error);
+        console.error(`Error fetching user details for ID ${otherUserId}:`, error);
       }
     }
 
@@ -159,11 +159,11 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
 
       // Check if the current user has seen the last message
       const seenBy = lastMessage.get("seenBy") || [];
-      if (!seenBy.includes(currentUserId.toString())) {
+      if (!seenBy.includes(currentUserId)) {
         // If the last message is not seen by the current user, count unseen messages
         const unseenQuery = new Parse.Query(Message);
         unseenQuery.equalTo("roomId", room.id);
-        unseenQuery.notEqualTo("seenBy", currentUserId.toString());
+        unseenQuery.notEqualTo("seenBy", currentUserId);
         unseenCount = await unseenQuery.count({ useMasterKey: true });
       }
     }
@@ -362,27 +362,50 @@ Parse.Cloud.define("deleteRoom", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, "Invalid user session");
   }
 
+  console.log(`Attempting to delete room ${roomId} for user ${currentUser.id}`);
+
   const roomQuery = new Parse.Query("Room");
-  const room = await roomQuery.get(roomId, { useMasterKey: true });
+  let room;
+  try {
+    room = await roomQuery.get(roomId, { useMasterKey: true });
+  } catch (error) {
+    console.error(`Error fetching room ${roomId}:`, error);
+    throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found");
+  }
 
   if (!room) {
     throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found");
   }
 
-  const roomUsers = room.get("users");
-  const isUserInRoom = roomUsers.some(user => user.id === currentUser.id);
+  console.log(`Room ${roomId} found. Checking user permissions.`);
 
-  if (!isUserInRoom) {
+  // Get the userIds from the room
+  const userIds = room.get("userIds") || [];
+  console.log(`Room userIds:`, JSON.stringify(userIds, null, 2));
+
+  // Check if the current user's ID is in the userIds array
+  const currentUserId = currentUser.id.toString();
+  const isUserAuthorized = userIds.some(userId => userId.toString() === currentUserId);
+
+  console.log(`Is user authorized: ${isUserAuthorized}`);
+
+  if (!isUserAuthorized) {
+    console.error(`User ${currentUserId} attempted to delete room ${roomId} without permission`);
     throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "You do not have permission to delete this room");
   }
 
+  console.log(`User ${currentUserId} has permission. Proceeding with room deletion.`);
+
+  // Delete associated messages
   const messageQuery = new Parse.Query("Message");
   messageQuery.equalTo("roomId", roomId);
   const messages = await messageQuery.find({ useMasterKey: true });
   await Parse.Object.destroyAll(messages, { useMasterKey: true });
 
+  // Delete the room
   await room.destroy({ useMasterKey: true });
 
+  console.log(`Room ${roomId} and associated messages deleted successfully`);
   return { message: "Room and associated messages deleted successfully" };
 });
 
