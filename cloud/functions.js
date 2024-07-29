@@ -97,7 +97,7 @@ Parse.Cloud.define("listRooms", async (request) => {
   query.equalTo("isPrivate", false);
   query.limit(limit);
   query.skip(skip);
-  query.ascending("createdAt");
+  query.descending("createdAt");
 
   const results = await query.find({ useMasterKey: true });
   const total = await query.count({ useMasterKey: true });
@@ -192,7 +192,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   query.equalTo("roomId", roomId);
   query.limit(limit);
   query.skip(skip);
-  query.ascending("createdAt");
+  query.descending("createdAt");
 
   const results = await query.find({ useMasterKey: true });
   const total = await query.count({ useMasterKey: true });
@@ -242,20 +242,19 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 });
 
 Parse.Cloud.define("createMessage", async (request) => {
-  const { roomId, text, imageUrl, username } = request.params;
-  const access_token = request.headers.authorization.split(' ')[1]
-
-  const user = await checkCurrentUser(access_token)
+  const { roomId, text, imageUrl, fileUrl, audioUrl, username, userId } = request.params;
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
 
   message.set("roomId", roomId);
   message.set("text", text || "");
-  message.set("userId", user.id.toString());
+  message.set("userId", userId);
   message.set("username", username);
   message.set("imageUrl", imageUrl || null);
-  message.set("seenBy", [user.id.toString()]); // Initialize with the sender's ID
+  message.set("fileUrl", fileUrl || null);
+  message.set("audioUrl", audioUrl || null);
+  message.set("seenBy", [userId]);
 
   await message.save(null, { useMasterKey: true });
 
@@ -267,6 +266,8 @@ Parse.Cloud.define("createMessage", async (request) => {
     username: message.get("username"),
     createdAt: message.createdAt,
     imageUrl: message.get("imageUrl"),
+    fileUrl: message.get("fileUrl"),
+    audioUrl: message.get("audioUrl"),
     seenBy: message.get("seenBy")
   };
 });

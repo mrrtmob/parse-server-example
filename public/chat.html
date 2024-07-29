@@ -302,6 +302,13 @@
             placeholder="Type your message..."
             class="flex-1 p-4 rounded-full border-none bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
           />
+          <input type="file" id="file-upload" accept="image/*,.pdf,.doc,.docx" class="hidden" />
+          <button
+            onclick="document.getElementById('file-upload').click()"
+            class="bg-green-500 text-white p-4 rounded-full hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-md mr-2"
+          >
+            Upload File
+          </button>
           <button
             onclick="sendMessage()"
             class="bg-blue-600 text-white p-4 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-md"
@@ -322,7 +329,7 @@
             </svg>
           </button>
         </div>
-        <input
+        <!-- <input
           type="text"
           id="image-url-input"
           placeholder="Image URL (optional)"
@@ -343,7 +350,7 @@
             class="flex-1 bg-red-500 text-white p-4 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-md"
           >
             Stop Recording
-          </button>
+          </button> -->
         </div>
       </div>
     </div>
@@ -760,37 +767,62 @@
         }
 
         const messageDiv = document.createElement('div');
-        messageDiv.id = `message-${message.id}`; // Add an ID to the message div
-        const isSent = message.username === currentUser.name;
+        messageDiv.id = `message-${message.id}`;
+
+        const isSent = message.username === (currentUser ? currentUser.name : 'Anonymous');
 
         messageDiv.className = `flex ${isSent ? 'justify-end' : 'justify-start'} mb-2`;
 
-        let messageContent = `
-          <div class="${isSent ? 'items-end' : 'items-start'} flex flex-col">
-            ${!isSent ? `<div class="text-xs text-gray-500 mb-1">${message.username}</div>` : ''}
-            <div class="${isSent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-2xl px-3 py-2 max-w-xs sm:max-w-md break-words">
-              <div class="text-sm">${message.text}</div>
-        `;
+        const messageContent = document.createElement('div');
+        messageContent.className = `${isSent ? 'items-end' : 'items-start'} flex flex-col`;
+
+        if (!isSent) {
+          const usernameDiv = document.createElement('div');
+          usernameDiv.className = 'text-xs text-gray-500 mb-1';
+          usernameDiv.textContent = message.username;
+          messageContent.appendChild(usernameDiv);
+        }
+
+        const messageBody = document.createElement('div');
+        messageBody.className = `${isSent ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-2xl px-3 py-2 max-w-xs sm:max-w-md break-words`;
+
+        if (message.text) {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'text-sm';
+          textDiv.textContent = message.text;
+          messageBody.appendChild(textDiv);
+        }
 
         if (message.imageUrl) {
-          messageContent += `<img src="${message.imageUrl}" class="mt-2 max-w-full h-auto rounded-lg" alt="Shared image">`;
+          const img = document.createElement('img');
+          img.src = message.imageUrl;
+          img.className = 'mt-2 max-w-full h-auto rounded-lg';
+          img.alt = 'Shared image';
+          messageBody.appendChild(img);
         }
 
         if (message.audioUrl) {
-          messageContent += `
-            <audio controls class="mt-2 w-full">
-              <source src="${message.audioUrl}" type="audio/wav">
-              Your browser does not support the audio element.
-            </audio>
-          `;
+          const audio = document.createElement('audio');
+          audio.controls = true;
+          audio.className = 'mt-2 w-full';
+          const source = document.createElement('source');
+          source.src = message.audioUrl;
+          source.type = 'audio/wav';
+          audio.appendChild(source);
+          messageBody.appendChild(audio);
         }
 
-        messageContent += `
-            </div>
-          </div>
-        `;
+        if (message.fileUrl) {
+          const fileLink = document.createElement('a');
+          fileLink.href = message.fileUrl;
+          fileLink.className = 'mt-2 text-blue-500';
+          fileLink.textContent = 'Download File';
+          fileLink.download = '';
+          messageBody.appendChild(fileLink);
+        }
 
-        messageDiv.innerHTML = messageContent;
+        messageContent.appendChild(messageBody);
+        messageDiv.appendChild(messageContent);
         chatMessages.appendChild(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
       }
@@ -800,34 +832,98 @@
           alert('Please select a room first.');
           return;
         }
+
         const text = document.getElementById('message-input').value.trim();
         const imageUrl = document.getElementById('image-url-input').value.trim();
+        const fileInput = document.getElementById('file-upload');
+        const file = fileInput.files[0];
 
-        if (text || imageUrl) {
+        let uploadedFileUrl = null;
+        let uploadedImageUrl = null;
+
+        if (file) {
+          try {
+            if (file.type.startsWith('image/')) {
+              uploadedImageUrl = await uploadFile(file);
+            } else {
+              uploadedFileUrl = await uploadFile(file);
+            }
+          } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Failed to upload file. Please try again.');
+            return;
+          }
+        }
+
+        if (text || uploadedFileUrl || uploadedImageUrl || imageUrl) {
           try {
             const message = await makeAuthenticatedRequest('createMessage', {
               roomId: currentRoom.id,
               text: text,
-              imageUrl: imageUrl,
-              userId: String(currentUser.id),
-              username: currentUser.name,
+              imageUrl: uploadedImageUrl || imageUrl,
+              fileUrl: uploadedFileUrl,
+              userId: currentUser ? String(currentUser.id) : 'anonymous',
+              username: currentUser ? currentUser.name : 'Anonymous',
             });
             document.getElementById('message-input').value = '';
             document.getElementById('image-url-input').value = '';
-            // Remove this line to prevent duplicate display
-            // displayMessage(message);
+            fileInput.value = '';
+            displayMessage(message);
             const chatMessages = document.getElementById('chat-messages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
           } catch (error) {
             console.error('Error sending message:', error);
-            if (error.response) {
-              console.error('Response:', await error.response.text());
-            }
             alert('Failed to send message. Please try again.');
           }
         } else {
-          alert('Please enter a message or provide an image URL.');
+          alert('Please enter a message, provide an image URL, or upload a file.');
         }
+      }
+
+      async function uploadFile(file) {
+        // Sanitize the file name
+        const sanitizedFileName = sanitizeFileName(file.name);
+
+        const formData = new FormData();
+        formData.append('file', file, sanitizedFileName);
+
+        const response = await fetch(`${Parse.serverURL}/files/${sanitizedFileName}`, {
+          method: 'POST',
+          headers: {
+            'X-Parse-Application-Id': 'myAppId', // Replace with your actual App ID
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Failed to upload file: ${errorData.error || 'Unknown error'}`);
+        }
+
+        const data = await response.json();
+        return data.url;
+      }
+
+      function sanitizeFileName(fileName) {
+        // Remove any characters that aren't alphanumeric, dots, dashes, or underscores
+        let sanitized = fileName.replace(/[^a-zA-Z0-9.-_]/g, '_');
+
+        // Ensure the filename doesn't start with a dot
+        sanitized = sanitized.replace(/^\./, '_');
+
+        // If the sanitization results in an empty string, provide a default name
+        if (sanitized.length === 0) {
+          sanitized = 'file';
+        }
+
+        // Limit the length of the filename
+        const maxLength = 100; // You can adjust this as needed
+        if (sanitized.length > maxLength) {
+          const extension = sanitized.split('.').pop();
+          sanitized = sanitized.substr(0, maxLength - extension.length - 1) + '.' + extension;
+        }
+
+        return sanitized;
       }
 
       async function startRecording() {
@@ -913,7 +1009,7 @@
 
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'wss://parse-dev.evalley.io//parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
 
