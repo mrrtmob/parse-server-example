@@ -310,8 +310,8 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
         username: message.get("username") || (user && user.get("username")) || "Unknown User",
         text: message.get("text") || "",
         createdAt: message.createdAt,
-        imageUrl: message.get("imageUrl") || null,
-        audioUrl: message.get("audioUrl") || null,
+        imageUrl: message.get("fileUrl") || null,
+        fileUrl: message.get("fileUrl") || null,
         profile: message.get("profile") || defaultImageUrl,
         seenBy: message.get("seenBy") || []
       };
@@ -324,10 +324,9 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 });
 
 
-Parse.Cloud.define("createMessage", async (request) => {
-  const { roomId, text, imageUrl, fileUrl, audioUrl } = request.params;
-
-  const access_token = request.headers.authorization.split(' ')[1];
+Parse.Cloud.define("createMessages", async (request) => {
+  const { roomId, text, fileUrl, audioUrl, access_token } = request.params;
+  console.log("oooooooooooooooo", access_token)
   const user = await checkCurrentUser(access_token);
   const userId = user.id.toString();
   const username = user.name;
@@ -349,7 +348,7 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("text", text || "");
   message.set("userId", userId);
   message.set("username", username);
-  message.set("imageUrl", imageUrl || null);
+  message.set("imageUrl", fileUrl || null);
   message.set("fileUrl", fileUrl || null);
   message.set("audioUrl", audioUrl || null);
   message.set("seenBy", [userId]);
@@ -445,6 +444,46 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
     userIds: room.get("userIds"),
     roomIdentifier: room.get("roomIdentifier")
   };
+});
+
+Parse.Cloud.define("checkUserRoom", async (request) => {
+  const { otherUserId } = request.params;
+
+  const access_token = request.headers.authorization.split(' ')[1];
+
+  const user = await checkCurrentUser(access_token);
+
+  // Ensure we’re using string IDs
+  const currentUserId = user.id.toString();
+  const otherUserIdString = otherUserId.toString();
+
+  // Query for existing private rooms that contain both users
+  const query = new Parse.Query(Room);
+  query.equalTo("isPrivate", true);
+  query.containedIn("userIds", [currentUserId, otherUserIdString]);
+
+  const rooms = await query.find({ useMasterKey: true });
+
+  // Check if a room exists with exactly these two users
+  const existingRoom = rooms.find(room => {
+    const userIds = room.get("userIds") || [];
+    return userIds.length === 2 &&
+      userIds.includes(currentUserId) &&
+      userIds.includes(otherUserIdString);
+  });
+
+  if (existingRoom) {
+    console.log(`Existing room found: ${existingRoom.id}`);
+    return {
+      id: existingRoom.id,
+      name: existingRoom.get("name"),
+      userIds: existingRoom.get("userIds"),
+      roomIdentifier: existingRoom.get("roomIdentifier")
+    };
+  } else {
+    console.log("No existing room found.");
+    return { message: "No existing room found." };
+  }
 });
 
 Parse.Cloud.define("addUserToRoom", async (request) => {

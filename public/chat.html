@@ -833,45 +833,43 @@
           alert('Please select a room first.');
           return;
         }
-
+      
         const text = document.getElementById('message-input').value.trim();
         const imageUrl = document.getElementById('image-url-input').value.trim();
         const fileInput = document.getElementById('file-upload');
         const file = fileInput.files[0];
-
-        let uploadedFileUrl = null;
-        let uploadedImageUrl = null;
-
+      
+        const formData = new FormData();
+        formData.append('roomId', currentRoom.id);
+        formData.append('text', text);
+        formData.append('imageUrl', imageUrl);
+        
         if (file) {
-          try {
-            if (file.type.startsWith('image/')) {
-              uploadedImageUrl = await uploadFile(file);
-            } else {
-              uploadedFileUrl = await uploadFile(file);
-            }
-          } catch (error) {
-            console.error('Error uploading file:', error);
-            alert('Failed to upload file. Please try again.');
-            return;
-          }
+          formData.append('file', file);
         }
-
-        if (text || uploadedFileUrl || uploadedImageUrl || imageUrl) {
+      
+        if (text || file || imageUrl) {
           try {
-            const message = await makeAuthenticatedRequest('createMessage', {
-              roomId: currentRoom.id,
-              text: text,
-              imageUrl: uploadedImageUrl || imageUrl,
-              fileUrl: uploadedFileUrl,
-              userId: currentUser ? String(currentUser.id) : 'anonymous',
-              username: currentUser ? currentUser.name : 'Anonymous',
+            const response = await fetch('http://localhost:1337/api/createMessage', { // Replace with your actual URL
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+              },
+              body: formData,
             });
-            document.getElementById('message-input').value = '';
-            document.getElementById('image-url-input').value = '';
-            fileInput.value = '';
-            displayMessage(message);
-            const chatMessages = document.getElementById('chat-messages');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+            if (response.ok) {
+              const data = await response.json();
+              document.getElementById('message-input').value = '';
+              document.getElementById('image-url-input').value = '';
+              fileInput.value = '';
+              displayMessage(data.chatMessage);
+              const chatMessages = document.getElementById('chat-messages');
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            } else {
+              const errorResponse = await response.json();
+              alert('Failed to send message: ' + errorResponse.message);
+            }
           } catch (error) {
             console.error('Error sending message:', error);
             alert('Failed to send message. Please try again.');

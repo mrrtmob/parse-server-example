@@ -4,6 +4,7 @@ import path from 'path';
 import http from 'http';
 import cors from 'cors';
 import Parse from 'parse/node.js';
+import multer from 'multer';
 
 const __dirname = path.resolve();
 
@@ -21,7 +22,7 @@ export const config = {
   //   enableForAnonymous: true
   // },
   liveQuery: {
-    classNames: ['Room', 'Message' ]
+    classNames: ['Room', 'Message']
   },
   auth: {
     // Add this section for custom authentication
@@ -76,6 +77,8 @@ Parse.serverURL = config.serverURL;
 // Serve static assets from the /public folder
 app.use('/public', express.static(path.join(__dirname, '/public')));
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // // Serve the Parse API on the /parse URL prefix
 // let server;
 // if (!process.env.TESTING) {
@@ -83,6 +86,61 @@ app.use('/public', express.static(path.join(__dirname, '/public')));
 // }
 
 // Parse Server plays nicely with the rest of your web routes
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Specify the destination directory for uploaded files
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Generate a unique filename with timestamp
+  }
+});
+const upload = multer({ storage: storage });
+
+// File upload and create message API route
+app.post('/api/createMessage', upload.single('file'), async (req, res) => {
+  try {
+    let fileUrl = null;
+
+    if (req.file) {
+      // Construct the public URL of the uploaded file
+      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    }
+
+    // Check for the authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(400).json({ message: 'Authorization header missing' });
+    }
+
+    const accessToken = authHeader.split(' ')[1];
+    if (!accessToken) {
+      return res.status(400).json({ message: 'Invalid authorization header format' });
+    }
+
+    // Parameters for the createMessage function
+    const roomId = req.body.roomId;
+    const text = req.body.text || "";
+    console.log()
+
+    // Call the Parse Cloud function to create the message
+    const chatMessage = await Parse.Cloud.run('createMessages', {
+      roomId: roomId,
+      text: text,
+      fileUrl: fileUrl,
+      imageUrl: fileUrl,
+      page: 1,
+      limit:20,
+      access_token: accessToken
+    });
+
+    res.status(200).json({ message: 'Message created successfully', file: req.file, fileUrl: fileUrl, chatMessage: chatMessage });
+  } catch (error) {
+    console.error(error);  // Log the error for debugging
+    res.status(500).json({ message: 'Message creation failed', error: error.message });
+  }
+});
+
 app.get('/', function (req, res) {
   res.status(200).send('I dream of being a website.  Please star the parse-server repo on GitHub!');
 });
