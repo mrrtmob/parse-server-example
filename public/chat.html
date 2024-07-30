@@ -334,8 +334,9 @@
           id="image-url-input"
           placeholder="Image URL (optional)"
           class="p-4 w-full rounded-full border-none bg-gray-100 mt-6 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+          style="display: none;"
         />
-        <div class="flex space-x-4 mt-6">
+        <!-- <div class="flex space-x-4 mt-6">
           <button
             id="record-button"
             onclick="startRecording()"
@@ -350,7 +351,7 @@
             class="flex-1 bg-red-500 text-white p-4 rounded-full hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-md"
           >
             Stop Recording
-          </button>
+          </button> -->
         </div>
       </div>
     </div>
@@ -1006,44 +1007,57 @@
           console.error('No access token found. LiveQuery setup failed.');
           return;
         }
-
+      
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'ws://localhost:1337//parse', // Replace with your WebSocket URL
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
-
+      
         client.open();
-
-        const query = new Parse.Query('Message');
+      
+        // Subscribe to messages for the current room
+        const messageQuery = new Parse.Query('Message');
         if (currentRoom) {
-          query.equalTo('roomId', currentRoom.id);
+          messageQuery.equalTo('roomId', currentRoom.id);
+          console.log("dsgsdgsgdsh", messageQuery)
         }
-
-        const subscription = await client.subscribe(query);
-
-        const messageIds = new Set(); // To keep track of received message IDs
-
-        subscription.on('create', message => {
-          const messageId = message.id;
-          if (message.get('roomId') === currentRoom.id && !messageIds.has(messageId)) {
-            messageIds.add(messageId);
-            displayMessage({
-              id: messageId,
-              username: message.get('username'),
-              text: message.get('text'),
-              imageUrl: message.get('imageUrl'),
-              audioUrl: message.get('audioUrl'),
-            });
-          }
+      
+        const messageSubscription = await client.subscribe(messageQuery);
+        
+        // Handle new messages
+        messageSubscription.on('create', message => {
+          // Display the new message
+          displayMessage({
+            id: message.id,
+            username: message.get('username'),
+            text: message.get('text'),
+            imageUrl: message.get('imageUrl'),
+            audioUrl: message.get('audioUrl'),
+          });
+      
+          // Re-fetch and display the latest room details when a new message is received
         });
+      
+        // Optional: Subscribe to the Room class if you want to handle cases like new room creation as well
+        const roomQuery = new Parse.Query('Room');
+        roomQuery.equalTo('userIds', "508");
 
+      
+        const roomSubscription = await client.subscribe(roomQuery);
+      
+        roomSubscription.on('update', (updatedRoom) => {
+          // Logic here if needed when a room is updated
+          console.log("gggggggggg")
+          loadRooms(); // Could also re-query rooms when a room is updated
+        });
+      
         // Handle potential disconnections
         client.on('close', () => {
           console.log('LiveQuery connection closed. Attempting to reconnect...');
           setTimeout(() => setupLiveQuery(), 3000); // Try to reconnect after 3 seconds
         });
-
+      
         client.on('error', error => {
           console.error('LiveQuery error:', error);
         });
@@ -1062,6 +1076,7 @@
       });
 
       // Initialize the application
+      setupLiveQuery();
       updateUserUI();
     </script>
   </body>

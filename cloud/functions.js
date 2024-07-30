@@ -126,6 +126,19 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
   const rooms = await query.find({ useMasterKey: true });
 
   const roomDetailsPromises = rooms.map(async room => {
+    // Get the latest deletion date for the current user
+    const deletedArray = room.get("deleted") || [];
+    const userDeletions = deletedArray.filter(deletion => deletion.deletedBy === currentUserId);
+
+    // Sort to get the latest deletedAt date
+    let lastDeletedAt = null;
+    if (userDeletions.length > 0) {
+      userDeletions.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+      lastDeletedAt = new Date(userDeletions[0].deletedAt);
+    }
+
+    console.log(`Room ${room.id}: Last deleted at ${lastDeletedAt}`);
+
     const userIds = room.get("userIds") || [];
     const otherUserId = userIds.find(id => id !== currentUserId);
 
@@ -148,6 +161,9 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
     lastMessageQuery.equalTo("roomId", room.id);
     lastMessageQuery.descending("createdAt");
     lastMessageQuery.limit(1);
+    if (lastDeletedAt) {
+      lastMessageQuery.greaterThan("createdAt", lastDeletedAt);
+    }
     const lastMessage = await lastMessageQuery.first({ useMasterKey: true });
 
     let lastMessageText = "No messages yet";
@@ -158,18 +174,20 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
       lastMessageText = lastMessage.get("text") || "Image or audio message";
       lastMessageTime = lastMessage.createdAt;
 
-      // Check if the current user has seen the last message
-      const seenBy = lastMessage.get("seenBy") || [];
-      if (!seenBy.includes(currentUserId)) {
-        // If the last message is not seen by the current user, count unseen messages
-        const unseenQuery = new Parse.Query(Message);
-        unseenQuery.equalTo("roomId", room.id);
-        unseenQuery.notEqualTo("seenBy", currentUserId);
-        unseenCount = await unseenQuery.count({ useMasterKey: true });
+      // Count unseen messages
+      const unseenQuery = new Parse.Query(Message);
+      unseenQuery.equalTo("roomId", room.id);
+      unseenQuery.notEqualTo("seenBy", currentUserId);
+      if (lastDeletedAt) {
+        unseenQuery.greaterThan("createdAt", lastDeletedAt);
       }
+      unseenCount = await unseenQuery.count({ useMasterKey: true });
     }
 
-    console.log(`Room ${room.id}: Last message seen by ${lastMessage ? lastMessage.get("seenBy") : []}, current user ${currentUserId}, unseen count ${unseenCount}`);
+    // If there's no last message after the last deletion, return null to filter out this room
+    if (lastDeletedAt && (!lastMessageTime || lastMessageTime <= lastDeletedAt)) {
+      return null;
+    }
 
     return {
       id: room.id,
@@ -182,10 +200,13 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
     };
   });
 
-  // Resolve all promises and sort by lastMessageTime
+  // Resolve promises and filter out null results
   const roomDetails = await Promise.all(roomDetailsPromises);
-  const sortedRoomDetails = roomDetails.sort((a, b) => {
-    return (b.lastMessageTime || 0) - (a.lastMessageTime || 0); // Sort by descending order
+  const filteredRoomDetails = roomDetails.filter(detail => detail !== null);
+
+  // Sort by lastMessageTime
+  const sortedRoomDetails = filteredRoomDetails.sort((a, b) => {
+    return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
   });
 
   return sortedRoomDetails;
@@ -199,8 +220,55 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 
   const profile_url = currentUser.avatar
 
+  const roomQuery = new Parse.Query("Room");
+
+  // Query for the room by objectId
+  roomQuery.equalTo("objectId", roomId);
+
+  // Use first() to get the room
+  const roomData = await roomQuery.first({ useMasterKey: true });
+
+  if (!roomData) {
+    console.log(`Room with ID ${roomId} not found.`);
+    throw new Parse.Error(Parse.Error.OBJECT_NOT_FOUND, "Room not found.");
+  }
+
+  console.log(`Room found: ${JSON.stringify(roomData)}`);
+
+  // Check the deleted array
+  const deletedArray = roomData.get("deleted") || [];
+  console.log("-=====================", JSON.stringify(deletedArray));
+
+  // Filter to get deletions by the current user
+  const userDeletions = deletedArray.filter(deletion => deletion.deletedBy == currentUser.id);
+
+  // Sort by deletedAt in descending order
+  userDeletions.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+
+  // Get the most recent deletion info, if it exists
+  const deletionInfo = userDeletions.length > 0 ? userDeletions[0] : null;
+
+  let deletedAt = null;
+  if (deletionInfo) {
+    deletedAt = deletionInfo.deletedAt; // This should be a Date object
+    if (!(deletedAt instanceof Date)) {
+      // If it's not a Date, attempt to convert it
+      deletedAt = new Date(deletedAt); // Convert to Date if necessary
+      if (isNaN(deletedAt.getTime())) {
+        console.error("deletedAt is not a valid date:", deletedAt);
+        deletedAt = null; // Set to null if conversion fails
+      }
+    }
+
+    console.log(`User ${currentUser.id} deleted the room on: ${deletedAt}`);
+  }
+
   const query = new Parse.Query(Message);
   query.equalTo("roomId", roomId);
+  // If deletedAt is available, filter messages created after deletedAt
+  if (deletedAt) {
+    query.greaterThan("createdAt", deletedAt);
+  }
   query.limit(limit);
   query.skip(skip);
   query.descending("createdAt");
@@ -255,18 +323,28 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
   };
 });
 
+
 Parse.Cloud.define("createMessage", async (request) => {
   const { roomId, text, imageUrl, fileUrl, audioUrl } = request.params;
 
   const access_token = request.headers.authorization.split(' ')[1];
   const user = await checkCurrentUser(access_token);
   const userId = user.id.toString();
-  const username = user.username
-  const profile_url = user.avatar
+  const username = user.name;
+  const profile_url = user.avatar;
+
+  const Room = Parse.Object.extend("Room");
+  const queryRoom = new Parse.Query(Room);
+
+  // Check if the room exists
+  const room = await queryRoom.get(roomId, { useMasterKey: true }).catch(() => {
+    throw new Error("Room not found");
+  });
 
   const Message = Parse.Object.extend("Message");
   const message = new Message();
 
+  // Set message attributes
   message.set("roomId", roomId);
   message.set("text", text || "");
   message.set("userId", userId);
@@ -275,11 +353,13 @@ Parse.Cloud.define("createMessage", async (request) => {
   message.set("fileUrl", fileUrl || null);
   message.set("audioUrl", audioUrl || null);
   message.set("seenBy", [userId]);
-  message.set("profile", profile_url || null)
+  message.set("profile", profile_url || null);
 
+  // Save the message
   await message.save(null, { useMasterKey: true });
 
-  return {
+  // Update the Room's lastMessage
+  const chat = {
     id: message.id,
     roomId: message.get("roomId"),
     text: message.get("text"),
@@ -291,7 +371,14 @@ Parse.Cloud.define("createMessage", async (request) => {
     audioUrl: message.get("audioUrl"),
     seenBy: message.get("seenBy"),
     profile: message.get("profile")
-  };
+  }
+
+  room.set('lastMessage', chat.text);
+
+  // Save the updated room
+  await room.save(null, { useMasterKey: true });
+
+  return chat;
 });
 
 Parse.Cloud.define("createPrivateRoom", async (request) => {
@@ -340,14 +427,14 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   room.set("userIds", [currentUserId, otherUserIdString]);  // Store user IDs as strings
   room.set("roomIdentifier", roomIdentifier);
 
-  const acl = new Parse.ACL();
-  acl.setPublicReadAccess(false);
-  acl.setPublicWriteAccess(false);
-  acl.setReadAccess(currentUserId, true);
-  acl.setWriteAccess(currentUserId, true);
-  acl.setReadAccess(otherUserIdString, true);
-  acl.setWriteAccess(otherUserIdString, true);
-  room.setACL(acl);
+  // const acl = new Parse.ACL();
+  // acl.setPublicReadAccess(false);
+  // acl.setPublicWriteAccess(false);
+  // acl.setReadAccess(currentUserId, true);
+  // acl.setWriteAccess(currentUserId, true);
+  // acl.setReadAccess(otherUserIdString, true);
+  // acl.setWriteAccess(otherUserIdString, true);
+  // room.setACL(acl);
 
   await room.save(null, { useMasterKey: true });
 
@@ -385,7 +472,7 @@ Parse.Cloud.define("deleteRoom", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_SESSION_TOKEN, "Invalid user session");
   }
 
-  console.log(`Attempting to delete room ${roomId} for user ${currentUser.id}`);
+  console.log(`Attempting to soft delete room ${roomId} for user ${currentUser.id}`);
 
   const roomQuery = new Parse.Query("Room");
   let room;
@@ -417,19 +504,43 @@ Parse.Cloud.define("deleteRoom", async (request) => {
     throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "You do not have permission to delete this room");
   }
 
-  console.log(`User ${currentUserId} has permission. Proceeding with room deletion.`);
+  console.log(`User ${currentUserId} has permission. Proceeding with soft deletion.`);
 
-  // Delete associated messages
+  // Mark the room as deleted
+  const deletedInfo = {
+    deletedAt: new Date(),
+    deletedBy: currentUserId
+  };
+
+  // If 'deleted' field doesn't exist, initialize it
+  const deletedArray = room.get("deleted") || [];
+  deletedArray.push(deletedInfo);
+
+  room.set("deleted", deletedArray);
+  await room.save(null, { useMasterKey: true });
+
+  // Soft delete associated messages
   const messageQuery = new Parse.Query("Message");
   messageQuery.equalTo("roomId", roomId);
   const messages = await messageQuery.find({ useMasterKey: true });
-  await Parse.Object.destroyAll(messages, { useMasterKey: true });
 
-  // Delete the room
-  await room.destroy({ useMasterKey: true });
+  for (const message of messages) {
+    const messageDeletedInfo = {
+      deletedAt: new Date(),
+      deletedBy: currentUserId
+    };
 
-  console.log(`Room ${roomId} and associated messages deleted successfully`);
-  return { message: "Room and associated messages deleted successfully" };
+    // If 'deleted' field doesn't exist, initialize it
+    const messageDeletedArray = message.get("deleted") || [];
+    messageDeletedArray.push(messageDeletedInfo);
+
+    message.set("deleted", messageDeletedArray);
+  }
+
+  await Parse.Object.saveAll(messages, { useMasterKey: true });
+
+  console.log(`Room ${roomId} and associated messages marked as deleted successfully.`);
+  return { message: "Room and associated messages marked as deleted successfully" };
 });
 
 Parse.Cloud.define("markMessagesAsSeen", async (request) => {

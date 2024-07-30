@@ -21,7 +21,7 @@ export const config = {
   //   enableForAnonymous: true
   // },
   liveQuery: {
-    classNames: ['Message', 'Room']
+    classNames: ['Room', 'Message' ]
   },
   auth: {
     // Add this section for custom authentication
