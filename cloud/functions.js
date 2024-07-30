@@ -449,22 +449,24 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
 Parse.Cloud.define("checkUserRoom", async (request) => {
   const { otherUserId } = request.params;
 
-  const access_token = request.headers.authorization.split(' ')[1];
+  // Check if authorization header is present
+  const authorizationHeader = request.headers.authorization;
+  if (!authorizationHeader) {
+    throw new Error("Authorization header is missing.");
+  }
 
+  const access_token = authorizationHeader.split(' ')[1];
   const user = await checkCurrentUser(access_token);
 
-  // Ensure we’re using string IDs
   const currentUserId = user.id.toString();
   const otherUserIdString = otherUserId.toString();
 
-  // Query for existing private rooms that contain both users
   const query = new Parse.Query(Room);
   query.equalTo("isPrivate", true);
   query.containedIn("userIds", [currentUserId, otherUserIdString]);
 
   const rooms = await query.find({ useMasterKey: true });
 
-  // Check if a room exists with exactly these two users
   const existingRoom = rooms.find(room => {
     const userIds = room.get("userIds") || [];
     return userIds.length === 2 &&
