@@ -359,8 +359,8 @@
     <script>
       // Initialize Parse
       Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
-      Parse.serverURL = 'https://parse-dev.evalley.io/parse'; // Replace with your server URL
-      Parse.liveQueryServerURL = 'wss://parse-dev.evalley.io/parse';
+      Parse.serverURL = 'http://localhost:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://localhost:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -1008,7 +1008,7 @@
       
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
       

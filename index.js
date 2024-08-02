@@ -5,6 +5,7 @@ import http from 'http';
 import cors from 'cors';
 import Parse from 'parse/node.js';
 import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.resolve();
 
@@ -91,8 +92,10 @@ const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/'); // Specify the destination directory for uploaded files
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname)); // Generate a unique filename with timestamp
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);  // Get the file extension
+    const newFileName = `${uuidv4()}${ext}`;  // Create a new unique filename
+    cb(null, newFileName);
   }
 });
 const upload = multer({ storage: storage });
@@ -101,10 +104,19 @@ const upload = multer({ storage: storage });
 app.post('/api/createMessage', upload.single('file'), async (req, res) => {
   try {
     let fileUrl = null;
+    let imageUrl = null;
+    let voiceUrl = null;
 
     if (req.file) {
       // Construct the public URL of the uploaded file
       fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+      // Determine the file type and set the appropriate URL
+      if (req.file.mimetype.startsWith('image/')) {
+        imageUrl = fileUrl; // Set image URL if file is an image
+      } else if (req.file.mimetype.startsWith('audio/')) {
+        voiceUrl = fileUrl; // Set voice URL if file is an audio file
+      }
     }
 
     // Check for the authorization header
@@ -121,20 +133,20 @@ app.post('/api/createMessage', upload.single('file'), async (req, res) => {
     // Parameters for the createMessage function
     const roomId = req.body.roomId;
     const text = req.body.text || "";
-    console.log()
 
     // Call the Parse Cloud function to create the message
     const chatMessage = await Parse.Cloud.run('createMessages', {
       roomId: roomId,
       text: text,
       fileUrl: fileUrl,
-      imageUrl: fileUrl,
+      imageUrl: imageUrl,
+      voiceUrl: voiceUrl,
       page: 1,
-      limit:20,
+      limit: 20,
       access_token: accessToken
     });
 
-    res.status(200).json({ message: 'Message created successfully', file: req.file, fileUrl: fileUrl, chatMessage: chatMessage });
+    res.status(200).json({ message: 'Message created successfully', file: req.file, fileUrl: fileUrl, imageUrl: imageUrl, voiceUrl: voiceUrl, chatMessage: chatMessage });
   } catch (error) {
     console.error(error);  // Log the error for debugging
     res.status(500).json({ message: 'Message creation failed', error: error.message });

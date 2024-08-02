@@ -310,8 +310,9 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
         username: message.get("username") || (user && user.get("username")) || "Unknown User",
         text: message.get("text") || "",
         createdAt: message.createdAt,
-        imageUrl: message.get("fileUrl") || null,
+        imageUrl: message.get("imageUrl") || null,
         fileUrl: message.get("fileUrl") || null,
+        voiceUrl: message.get("voiceUrl") || null,
         profile: message.get("profile") || defaultImageUrl,
         seenBy: message.get("seenBy") || []
       };
@@ -325,7 +326,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 
 
 Parse.Cloud.define("createMessages", async (request) => {
-  const { roomId, text, fileUrl, audioUrl, access_token } = request.params;
+  const { roomId, text, fileUrl, voiceUrl, imageUrl, access_token } = request.params;
   console.log("oooooooooooooooo", access_token)
   const user = await checkCurrentUser(access_token);
   const userId = user.id.toString();
@@ -348,9 +349,9 @@ Parse.Cloud.define("createMessages", async (request) => {
   message.set("text", text || "");
   message.set("userId", userId);
   message.set("username", username);
-  message.set("imageUrl", fileUrl || null);
+  message.set("imageUrl", imageUrl || null);
   message.set("fileUrl", fileUrl || null);
-  message.set("audioUrl", audioUrl || null);
+  message.set("audioUrl", voiceUrl || null);
   message.set("seenBy", [userId]);
   message.set("profile", profile_url || null);
 
