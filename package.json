@@ -22,7 +22,7 @@
   "dependencies": {
     "@parse/push-adapter": "^6.4.1",
     "@parse/simple-mailgun-adapter": "^2.0.0",
-    "axios": "1.7.2",
+    "axios": "1.7.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
