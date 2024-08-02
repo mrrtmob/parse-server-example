@@ -616,12 +616,12 @@ Parse.Cloud.define("markMessagesAsSeen", async (request) => {
 });
 
 // Error handling middleware
-Parse.Cloud.beforeSave("Message", (request) => {
-  const message = request.object;
-  if (!message.get("text") && !message.get("imageUrl") && !message.get("audioUrl")) {
-    throw new Parse.Error(Parse.Error.INVALID_JSON, "Message must contain text, image, or audio");
-  }
-});
+// Parse.Cloud.beforeSave("Message", (request) => {
+//   const message = request.object;
+//   if (!message.get("text") && !message.get("imageUrl") && !message.get("audioUrl")) {
+//     throw new Parse.Error(Parse.Error.INVALID_JSON, "Message must contain text, image, or audio");
+//   }
+// });
 
 Parse.Cloud.beforeSave("Room", (request) => {
   const room = request.object;
