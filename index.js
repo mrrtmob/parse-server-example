@@ -110,12 +110,14 @@ app.post('/api/createMessage', upload.single('file'), async (req, res) => {
     if (req.file) {
       // Construct the public URL of the uploaded file
       fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      console.log('========================', req.file.mimetype)
 
-      // Determine the file type and set the appropriate URL
-      if (req.file.mimetype.startsWith('image/')) {
-        imageUrl = fileUrl; // Set image URL if file is an image
-      } else if (req.file.mimetype.startsWith('audio/')) {
-        voiceUrl = fileUrl; // Set voice URL if file is an audio file
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
+
+      if (req.file.mimetype.startsWith('image/') || ['.jpg', '.jpeg', '.png', '.gif'].includes(fileExtension)) {
+        imageUrl = fileUrl;
+      } else if (req.file.mimetype.startsWith('audio/') || ['.mp3', '.wav', '.m4a'].includes(fileExtension)) {
+        voiceUrl = fileUrl;
       }
     }
 

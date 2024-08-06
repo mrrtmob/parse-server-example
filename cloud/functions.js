@@ -311,7 +311,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
         text: message.get("text") || "",
         createdAt: message.createdAt,
         imageUrl: message.get("imageUrl") || null,
-        fileUrl: message.get("fileUrl") || null,
+        // fileUrl: message.get("fileUrl") || null,
         voiceUrl: message.get("voiceUrl") || null,
         profile: message.get("profile") || defaultImageUrl,
         seenBy: message.get("seenBy") || []
@@ -351,7 +351,7 @@ Parse.Cloud.define("createMessages", async (request) => {
   message.set("username", username);
   message.set("imageUrl", imageUrl || null);
   message.set("fileUrl", fileUrl || null);
-  message.set("audioUrl", voiceUrl || null);
+  message.set("voiceUrl", voiceUrl || null);
   message.set("seenBy", [userId]);
   message.set("profile", profile_url || null);
 
@@ -368,7 +368,7 @@ Parse.Cloud.define("createMessages", async (request) => {
     createdAt: message.createdAt,
     imageUrl: message.get("imageUrl"),
     fileUrl: message.get("fileUrl"),
-    audioUrl: message.get("audioUrl"),
+    voiceUrl: message.get("voiceUrl"),
     seenBy: message.get("seenBy"),
     profile: message.get("profile")
   }
@@ -618,7 +618,7 @@ Parse.Cloud.define("markMessagesAsSeen", async (request) => {
 // Error handling middleware
 // Parse.Cloud.beforeSave("Message", (request) => {
 //   const message = request.object;
-//   if (!message.get("text") && !message.get("imageUrl") && !message.get("audioUrl")) {
+//   if (!message.get("text") && !message.get("imageUrl") && !message.get("voiceUrl")) {
 //     throw new Parse.Error(Parse.Error.INVALID_JSON, "Message must contain text, image, or audio");
 //   }
 // });
