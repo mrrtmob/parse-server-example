@@ -359,8 +359,8 @@
     <script>
       // Initialize Parse
       Parse.initialize('myAppId', 'YOUR_JAVASCRIPT_KEY');
-      Parse.serverURL = 'https://parse-dev.evalley.io/parse'; // Replace with your server URL
-      Parse.liveQueryServerURL = 'wss://parse-dev.evalley.io/parse';
+      Parse.serverURL = 'http://localhost:1337/parse'; // Replace with your server URL
+      Parse.liveQueryServerURL = 'ws://localhost:1337/parse';
 
       let currentUser = null;
       let currentRoom = null;
@@ -850,7 +850,7 @@
       
         if (text || file || imageUrl) {
           try {
-            const response = await fetch('https://parse-dev.evalley.io/api/createMessage', { // Replace with your actual URL
+            const response = await fetch('http://localhost:1337/api/createMessage', { // Replace with your actual URL
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -1008,7 +1008,7 @@
       
         const client = new Parse.LiveQueryClient({
           applicationId: 'myAppId', // Replace with your Parse App ID
-          serverURL: 'wss://parse-dev.evalley.io/parse', // Replace with your WebSocket URL
+          serverURL: 'ws://localhost:1337/parse', // Replace with your WebSocket URL
           javascriptKey: 'YOUR_JAVASCRIPT_KEY', // Add your Parse JavaScript Key
         });
       

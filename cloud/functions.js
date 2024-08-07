@@ -119,44 +119,43 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
   const access_token = request.headers.authorization.split(' ')[1];
   const user = await checkCurrentUser(access_token);
   const currentUserId = user.id.toString();
+  const searchTerm = request.params.searchTerm ? request.params.searchTerm.toLowerCase() : null;
 
   const query = new Parse.Query(Room);
   query.equalTo("isPrivate", true);
   query.equalTo("userIds", currentUserId);
   const rooms = await query.find({ useMasterKey: true });
 
+  const Customer = Parse.Object.extend("Customer");
+
   const roomDetailsPromises = rooms.map(async room => {
-    // Get the latest deletion date for the current user
     const deletedArray = room.get("deleted") || [];
     const userDeletions = deletedArray.filter(deletion => deletion.deletedBy === currentUserId);
 
-    // Sort to get the latest deletedAt date
     let lastDeletedAt = null;
     if (userDeletions.length > 0) {
       userDeletions.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
       lastDeletedAt = new Date(userDeletions[0].deletedAt);
     }
 
-    console.log(`Room ${room.id}: Last deleted at ${lastDeletedAt}`);
-
     const userIds = room.get("userIds") || [];
     const otherUserId = userIds.find(id => id !== currentUserId);
 
     let otherUserDetails = { id: "Unknown", name: "Unknown User" };
     if (otherUserId) {
-      try {
-        const fetchedUser = await getUserInfoById(otherUserId);
+      const customerQuery = new Parse.Query(Customer);
+      customerQuery.equalTo("user_id", Number(otherUserId));
+      const otherCustomer = await customerQuery.first({ useMasterKey: true });
+
+      if (otherCustomer) {
         otherUserDetails = {
-          id: fetchedUser.id,
-          name: fetchedUser.name,
-          avatar: fetchedUser.avatar
+          id: otherCustomer.get("user_id"),
+          name: otherCustomer.get("name"),
+          avatar: otherCustomer.get("avatar")
         };
-      } catch (error) {
-        console.error(`Error fetching user details for ID ${otherUserId}:`, error);
       }
     }
 
-    // Fetch the last message
     const lastMessageQuery = new Parse.Query(Message);
     lastMessageQuery.equalTo("roomId", room.id);
     lastMessageQuery.descending("createdAt");
@@ -174,17 +173,17 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
       lastMessageText = lastMessage.get("text") || "Image or audio message";
       lastMessageTime = lastMessage.createdAt;
 
-      // Count unseen messages
+      // Calculate unseenCount
       const unseenQuery = new Parse.Query(Message);
       unseenQuery.equalTo("roomId", room.id);
-      unseenQuery.notEqualTo("seenBy", currentUserId);
+      unseenQuery.notEqualTo("userId", currentUserId); // Only count messages not from the current user
+      unseenQuery.notContainedIn("seenBy", [currentUserId]); // Check if the current user hasn't seen the message
       if (lastDeletedAt) {
         unseenQuery.greaterThan("createdAt", lastDeletedAt);
       }
       unseenCount = await unseenQuery.count({ useMasterKey: true });
     }
 
-    // If there's no last message after the last deletion, return null to filter out this room
     if (lastDeletedAt && (!lastMessageTime || lastMessageTime <= lastDeletedAt)) {
       return null;
     }
@@ -200,16 +199,26 @@ Parse.Cloud.define("listPrivateRooms", async (request) => {
     };
   });
 
-  // Resolve promises and filter out null results
-  const roomDetails = await Promise.all(roomDetailsPromises);
-  const filteredRoomDetails = roomDetails.filter(detail => detail !== null);
+  let roomDetails = await Promise.all(roomDetailsPromises);
 
-  // Sort by lastMessageTime
-  const sortedRoomDetails = filteredRoomDetails.sort((a, b) => {
-    return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
+  // Filter out null results (rooms with no messages after deletion)
+  roomDetails = roomDetails.filter(room => room !== null);
+
+  // Apply search filter if searchTerm is provided
+  if (searchTerm) {
+    roomDetails = roomDetails.filter(room =>
+      room.otherUser.name.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // Sort rooms by last message time (most recent first)
+  roomDetails.sort((a, b) => {
+    if (!a.lastMessageTime) return 1;
+    if (!b.lastMessageTime) return -1;
+    return b.lastMessageTime - a.lastMessageTime;
   });
 
-  return sortedRoomDetails;
+  return roomDetails;
 });
 
 Parse.Cloud.define("fetchChatMessages", async (request) => {
@@ -293,7 +302,7 @@ Parse.Cloud.define("fetchChatMessages", async (request) => {
 
   await Promise.all(unseenMessages.map(async (message) => {
     const seenBy = message.get("seenBy") || [];
-    seenBy.push(currentUser.id);
+    seenBy.push(currentUser.id.toString());
     message.set("seenBy", seenBy);
     message.set('profile', profile_url)
 
@@ -392,6 +401,28 @@ Parse.Cloud.define("createPrivateRoom", async (request) => {
   // Ensure we're using string IDs
   const currentUserId = user.id.toString();
   const otherUserIdString = otherUser.id.toString();
+
+  const Customer = Parse.Object.extend("Customer");
+
+  const currentUserQuery = new Parse.Query(Customer);
+  currentUserQuery.equalTo("user_id", currentUserId); // Assuming email is the unique identifier
+
+  const otherUserQuery = new Parse.Query(Customer);
+  otherUserQuery.equalTo("user_id", otherUserIdString);
+
+  const [currentUserExists, otherUserExists] = await Promise.all([
+    currentUserQuery.first({ useMasterKey: true }),
+    otherUserQuery.first({ useMasterKey: true }),
+  ]);
+
+  if (!currentUserExists) {
+    await createCustomerFromUserInfo(currentUserId);
+  }
+
+  if (!otherUserExists) {
+    await createCustomerFromUserInfo(otherUserIdString);
+
+  }
 
   // Query for existing private rooms that contain both users
   const query = new Parse.Query(Room);
@@ -629,3 +660,73 @@ Parse.Cloud.beforeSave("Room", (request) => {
     throw new Parse.Error(Parse.Error.INVALID_JSON, "Room must have a name");
   }
 });
+
+
+async function createCustomerFromUserInfo(userId) {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  try {
+    // Check if the customer already exists
+    const Customer = Parse.Object.extend("Customer");
+    const query = new Parse.Query(Customer);
+    query.equalTo("user_id", Number(userId));
+    const existingCustomer = await query.first({ useMasterKey: true });
+
+    if (existingCustomer) {
+      return {
+        success: true,
+        message: "Customer already exists",
+        customerId: existingCustomer.id,
+      };
+    }
+
+    // Fetch user information using the provided user ID
+    const userInfo = await getUserInfoById(userId); // Assume getUserInfoById is already defined
+
+    // Log the response to help diagnose issues
+    console.log("User Info Response:", userInfo);
+
+    // Extract relevant data from the userInfo response
+    const customerData = userInfo;
+
+    // Check the response structure
+    if (customerData) {
+      const item = customerData;
+
+      // Create a new customer object
+      const customer = new Customer();
+
+      customer.set("user_id", item.id);
+      customer.set("name", item.name);
+      customer.set("email", item.email);
+      customer.set("phone", item.phone);
+      customer.set("avatar", item.avatar);
+      customer.set("dob", new Date(item.dob)); // Ensure the date is properly formatted
+      customer.set("isVendor", item.is_vendor === 1); // Convert from integer to boolean
+      customer.set("isPhoneVerified", item.is_phone_verified);
+      customer.set("isKycVerified", item.is_kyc_verified);
+      // Add more fields as necessary
+
+      await customer.save(null, { useMasterKey: true });
+
+      return {
+        success: true,
+        message: "Customer created successfully",
+        customerId: customer.id,
+      };
+    } else {
+      // Provide more specific error messages based on the structure
+      if (customerData.status !== 200) {
+        throw new Error(`Error: ${customerData.status_description || "Unknown error"}`);
+      }
+      if (!customerData) {
+        throw new Error("User data item is missing");
+      }
+    }
+  } catch (error) {
+    console.error("Error creating customer:", error.message);
+    throw new Error("An error occurred while creating the customer");
+  }
+}
