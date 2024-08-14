@@ -32,10 +32,10 @@ export const config = {
       options: {
         // Implement token validation logic here
         validateAuthData: async (authData) => {
-          // This is where you should validate the token from mimi-dev.evalley.io
+          // This is where you should validate the token from mimi-dev2.evalley.io
           // For example:
           try {
-            const response = await fetch('https://mimi-dev.evalley.io/api/v1/auth/validate', {
+            const response = await fetch('https://mimi-dev2.evalley.io/api/v1/auth/validate', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

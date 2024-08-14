@@ -7,7 +7,7 @@ async function checkCurrentUser(accessToken) {
   }
 
   try {
-    const response = await axios.get('https://mimi-dev.evalley.io/api/v1/auth/profile', {
+    const response = await axios.get('https://mimi-dev2.evalley.io/api/v1/auth/profile', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -27,7 +27,7 @@ async function getUserInfoById(userId) {
   }
 
   try {
-    const response = await axios.get(`https://mimi-dev.evalley.io/api/v1/auth/user-profile/${userId}`, {
+    const response = await axios.get(`https://mimi-dev2.evalley.io/api/v1/auth/user-profile/${userId}`, {
       headers: {
         Expect: "cbfcc213cc2efece05f8c35889f5ddfa359140fe384ec90098a9956710638acb18f500147615127b425121be2951b8eab0643583867fcd77f2003b0c881a838f0c7dda5837ccafde873649be636e090ecafdc932a427abb94ae22e4dc7e44dd1a87de592ef96d5a90a3f6ab264a8b818",
       },
